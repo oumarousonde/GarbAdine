@@ -1,16 +1,13 @@
 {
   "name": "garbadine",
   "version": "1.0.0",
-  "description": "Gestion intelligente pour garbadromes et restaurants",
   "scripts": {
-    "dev": "echo 'Ouvrez public/index.html'",
+    "dev": "vercel dev",
     "build": "echo 'Build statique terminé'"
   },
   "dependencies": {
-    "pg": "^8.11.3",
-    "bcryptjs": "^2.4.3"
-  },
-  "keywords": ["gestion", "restaurant", "ivoire"],
-  "author": "GarbAdine Team",
-  "license": "MIT"
+    "pg": "^8.13.0",
+    "bcryptjs": "^2.4.3",
+    "xlsx": "^0.18.5"
+  }
 }
