@@ -1,0 +1,12 @@
+{
+  "name": "garbadine",
+  "version": "1.0.0",
+  "description": "Gestion intelligente pour garbadromes et restaurants",
+  "scripts": {
+    "dev": "echo 'Ouvrez public/index.html'",
+    "build": "echo 'Build statique terminé'"
+  },
+  "keywords": ["gestion", "restaurant", "ivoire"],
+  "author": "GarbAdine Team",
+  "license": "MIT"
+}
