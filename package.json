@@ -6,6 +6,10 @@
     "dev": "echo 'Ouvrez public/index.html'",
     "build": "echo 'Build statique terminé'"
   },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "bcryptjs": "^2.4.3"
+  },
   "keywords": ["gestion", "restaurant", "ivoire"],
   "author": "GarbAdine Team",
   "license": "MIT"
