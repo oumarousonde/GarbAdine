@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - GarbAdine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+    .gradient-bg { background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%); }
+    .fade-in { animation: fadeIn 0.4s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen p-4 md:p-8">
+
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8 fade-in">
+      <h1 class="text-3xl font-extrabold text-gray-800">Administration GarbAdine 👑</h1>
+      <button onclick="logout()" class="px-4 py-2 rounded-xl bg-white shadow hover:bg-red-50 text-red-600 font-bold transition">Déconnexion</button>
+    </div>
+
+    <!-- Stats Globales -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 fade-in">
+      <div class="bg-white rounded-2xl p-6 shadow-sm">
+        <p class="text-sm text-gray-500">Total Boutiques</p>
+        <p class="text-3xl font-extrabold text-gray-800" id="statTotal">0</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-emerald-500">
+        <p class="text-sm text-gray-500">Actives</p>
+        <p class="text-3xl font-extrabold text-emerald-600" id="statActive">0</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-red-500">
+        <p class="text-sm text-gray-500">Expirées</p>
+        <p class="text-3xl font-extrabold text-red-600" id="statExpired">0</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-amber-500">
+        <p class="text-sm text-gray-500">Revenus Abonnements</p>
+        <p class="text-3xl font-extrabold text-amber-600" id="statRevenue">0 F</p>
+      </div>
+    </div>
+
+    <!-- Liste des Boutiques -->
+    <div class="bg-white rounded-2xl shadow-sm p-6 fade-in">
+      <h2 class="text-xl font-bold text-gray-800 mb-6">Gestion des Établissements</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="p-4 text-xs font-bold text-gray-500 uppercase">Nom</th>
+              <th class="p-4 text-xs font-bold text-gray-500 uppercase">Type</th>
+              <th class="p-4 text-xs font-bold text-gray-500 uppercase">DG</th>
+              <th class="p-4 text-xs font-bold text-gray-500 uppercase">Fin Abonnement</th>
+              <th class="p-4 text-xs font-bold text-gray-500 uppercase">Statut</th>
+              <th class="p-4 text-xs font-bold text-gray-500 uppercase">Action</th>
+            </tr>
+          </thead>
+          <tbody id="shopTableBody" class="text-sm divide-y">
+            <!-- Rempli par JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'admin') window.location.href = '/';
+
+    function loadAdminData() {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const shops = users.filter(u => u.role === 'dg' && u.shop);
+      
+      let active = 0, expired = 0, revenue = 0;
+      const tbody = document.getElementById('shopTableBody');
+      tbody.innerHTML = '';
+
+      shops.forEach(dg => {
+        const shop = dg.shop;
+        const isExpired = new Date(shop.subscription.endDate) < new Date();
+        if (isExpired) expired++; else active++;
+        
+        // Calcul simple des revenus (5000/mois * mois restants ou passés)
+        revenue += 5000; 
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-amber-50/50">
+            <td class="p-4 font-bold text-gray-800">${shop.name}</td>
+            <td class="p-4"><span class="px-2 py-1 rounded bg-gray-100 text-xs font-bold">${shop.type}</span></td>
+            <td class="p-4 text-gray-600">${dg.name}</td>
+            <td class="p-4 text-gray-600">${new Date(shop.subscription.endDate).toLocaleDateString()}</td>
+            <td class="p-4">
+              <span class="px-2 py-1 rounded-full text-xs font-bold ${isExpired ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}">
+                ${isExpired ? 'EXPIRÉ' : 'ACTIF'}
+              </span>
+            </td>
+            <td class="p-4">
+              <button onclick="renewSub('${dg.id}')" class="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 font-bold">Renouveler (+30j)</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('statTotal').textContent = shops.length;
+      document.getElementById('statActive').textContent = active;
+      document.getElementById('statExpired').textContent = expired;
+      document.getElementById('statRevenue').textContent = revenue.toLocaleString() + ' F';
+    }
+
+    function renewSub(dgId) {
+      let users = JSON.parse(localStorage.getItem('users') || '[]');
+      const idx = users.findIndex(u => u.id === dgId);
+      if (idx > -1) {
+        const currentEnd = new Date(users[idx].shop.subscription.endDate);
+        const newEnd = new Date(currentEnd.getTime() + (30 * 24 * 60 * 60 * 1000));
+        users[idx].shop.subscription.endDate = newEnd.toISOString();
+        users[idx].shop.subscription.status = 'actif';
+        localStorage.setItem('users', JSON.stringify(users));
+        alert("Abonnement renouvelé pour 30 jours !");
+        loadAdminData();
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+
+    loadAdminData();
+  </script>
+</body>
+</html>
