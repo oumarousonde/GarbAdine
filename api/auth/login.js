@@ -1,4 +1,4 @@
-// api/auth/login.js - VERSION SELF-CONTAINED ULTIME
+// api/auth/login.js - VERSION SELF-CONTAINED ULTIME (CORRIGÉE)
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
@@ -72,11 +72,17 @@ module.exports = async function handler(req, res) {
       user.daysLeft = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
     }
 
-    // 6. Récupérer boutique si DG
+    // 6. Récupérer boutique si DG (CORRIGÉ AVEC dg_id)
     let shop = null;
     if (user.role === 'dg') {
-      const shopRes = await pool.query('SELECT * FROM shops WHERE owner_id = $1', [user.id]);
-      shop = shopRes.rows[0] || null;
+      try {
+        const shopRes = await pool.query('SELECT * FROM shops WHERE dg_id = $1', [user.id]);
+        shop = shopRes.rows[0] || null;
+        console.log('SHOP FOUND:', shop ? shop.name : 'Aucune boutique');
+      } catch (shopErr) {
+        console.error('⚠️ Erreur récupération boutique:', shopErr.message);
+        shop = null;
+      }
     }
 
     // 7. Succès
