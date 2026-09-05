@@ -1,18 +1,16 @@
-// api/auth/login.js
+// api/auth/login.js - VERSION DEBUG ULTIME
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
-// Configuration directe du Pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// Fonction query locale
-const query = (text, params) => pool.query(text, params);
-
 module.exports = async function handler(req, res) {
-  console.log('🔍 Login Request Body:', req.body);
+  console.log('=== DÉBUT LOGIN ===');
+  console.log('1. Method:', req.method);
+  console.log('2. Body reçu:', JSON.stringify(req.body));
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -20,80 +18,65 @@ module.exports = async function handler(req, res) {
 
   try {
     const { identifier, password, role } = req.body;
+    console.log('3. Champs extraits:', { identifier, password: '***', role });
 
-    // Validation stricte
     if (!identifier || !password || !role) {
-      console.warn('⚠️ Champs manquants:', { identifier: !!identifier, password: !!password, role: !!role });
-      return res.status(400).json({ 
-        error: 'Champs obligatoires manquants', 
-        details: { identifier: !!identifier, password: !!password, role: !!role } 
-      });
+      console.log('4. ERREUR: Champs manquants');
+      return res.status(400).json({ error: 'Champs obligatoires manquants' });
     }
 
-    // Construire la requête selon le rôle
+    // Construire la requête
     let sql, params;
     if (role === 'admin') {
       sql = 'SELECT * FROM users WHERE email = $1 AND role = $2';
       params = [identifier, role];
-    } else if (role === 'dg' || role === 'gerante') {
+      console.log('5. Mode ADMIN');
+    } else {
       sql = 'SELECT * FROM users WHERE phone = $1 AND role = $2';
       params = [identifier, role];
-    } else {
-      return res.status(400).json({ error: 'Rôle invalide.' });
+      console.log('5. Mode DG/GERANTE');
     }
-
-    // Chercher l'utilisateur
-    console.log('📝 Exécution SQL...');
-    const userResult = await query(sql, params);
     
+    console.log('6. SQL:', sql);
+    console.log('7. Params:', params);
+
+    // Exécuter la query
+    const userResult = await pool.query(sql, params);
+    console.log('8. Rows trouvées:', userResult.rows.length);
+
     if (userResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Numéro/email ou mot de passe incorrect' });
+      console.log('9. ERREUR: Utilisateur non trouvé');
+      return res.status(401).json({ error: 'Utilisateur non trouvé avec ces identifiants' });
     }
 
     const user = userResult.rows[0];
+    console.log('10. User trouvé:', { id: user.id, name: user.name, role: user.role });
+    console.log('11. Password hash en DB (début):', user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'NULL');
 
-    // Vérifier le mot de passe haché
+    // Comparer le mot de passe
+    console.log('12. Début bcrypt.compare...');
     const isValid = await bcrypt.compare(password, user.password_hash);
+    console.log('13. Résultat bcrypt.compare:', isValid);
+
     if (!isValid) {
+      console.log('14. ERREUR: Mot de passe incorrect');
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    // VÉRIFICATION CRITIQUE : Abonnement (Sauf pour Admin)
-    if (role !== 'admin') {
-      const now = new Date();
-      const subEnd = new Date(user.subscription_end_date);
-      
-      if (now > subEnd) {
-        return res.status(403).json({ 
-          error: 'ABONNEMENT_EXPIRE',
-          message: 'Votre période d\'essai est terminée. Contactez votre DG ou l\'Admin GarbAdine.'
-        });
-      }
-
-      // Calculer les jours restants
-      const daysLeft = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
-      user.daysLeft = daysLeft;
-    }
-
-    // Récupérer la boutique si c'est un DG
-    let shop = null;
-    if (user.role === 'dg') {
-      const shopRes = await query('SELECT * FROM shops WHERE owner_id = $1', [user.id]);
-      shop = shopRes.rows[0] || null;
-    }
-
-    // Réponse sécurité (sans données sensibles)
+    console.log('15. SUCCÈS: Connexion validée pour', user.name);
+    
+    // Nettoyer les données sensibles
     delete user.password_hash;
     delete user.secret_answer;
 
-    console.log('✅ Login réussi pour:', user.name);
     res.status(200).json({ 
       success: true, 
-      user: { ...user, shop } 
+      user: user 
     });
 
   } catch (error) {
-    console.error('❌ Erreur login critique:', error);
-    res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
+    console.error('16. ERREUR CRITIQUE:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ error: 'Erreur serveur: ' + error.message });
   }
 };
