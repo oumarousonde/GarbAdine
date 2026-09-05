@@ -8,61 +8,72 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { phone, password } = req.body;
+    // 1. CORRESPONDANCE EXACTE AVEC LE FRONTEND
+    const { identifier, password, role } = req.body;
 
-    // 1. Vérifications basiques
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Numéro et mot de passe obligatoires' });
+    // 2. Validation stricte des 3 champs obligatoires
+    if (!identifier || !password || !role) {
+      return res.status(400).json({ 
+        error: 'Champs manquants', 
+        details: { identifier: !!identifier, password: !!password, role: !!role } 
+      });
     }
 
-    // 2. Chercher l'utilisateur par téléphone
-    const userResult = await query(
-      'SELECT * FROM users WHERE phone = $1', 
-      [phone]
-    );
+    // 3. Requête SQL dynamique selon le rôle choisi
+    let sql, params;
+    if (role === 'admin') {
+      sql = 'SELECT * FROM users WHERE email = $1 AND role = $2';
+      params = [identifier, role];
+    } else {
+      sql = 'SELECT * FROM users WHERE phone = $1 AND role = $2';
+      params = [identifier, role];
+    }
 
+    const userResult = await query(sql, params);
+    
     if (userResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Numéro ou mot de passe incorrect' });
+      return res.status(401).json({ error: 'Identifiants incorrects' });
     }
 
     const user = userResult.rows[0];
 
-    // 3. Vérifier le mot de passe haché
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Numéro ou mot de passe incorrect' });
+    // 4. Vérification mot de passe haché
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    // 4. VÉRIFICATION CRITIQUE : Abonnement
-    const now = new Date();
-    const subEnd = new Date(user.subscription_end_date);
-    
-    // Si la date de fin est passée, on bloque
-    if (now > subEnd) {
-      return res.status(403).json({ 
-        error: 'ABONNEMENT_EXPIRE',
-        message: 'Votre période d\'essai ou abonnement est terminé. Contactez votre DG ou l\'Admin.'
-      });
-    }
-
-    // 5. Calculer les jours restants pour l'affichage frontend
-    const daysLeft = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
-
-    // 6. Réponse succès (sans mot de passe !)
-    res.status(200).json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        subscriptionEnd: user.subscription_end_date,
-        daysLeft: daysLeft
+    // 5. Vérification Abonnement (Sauf pour Admin)
+    if (role !== 'admin') {
+      const now = new Date();
+      const subEnd = new Date(user.subscription_end_date);
+      
+      if (now > subEnd) {
+        return res.status(403).json({ 
+          error: 'ABONNEMENT_EXPIRE',
+          message: 'Votre période d\'essai est terminée. Contactez votre DG ou l\'Admin.'
+        });
       }
-    });
+      
+      // Calcul jours restants pour le badge dashboard
+      user.daysLeft = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
+    }
+
+    // 6. Récupération Boutique (via owner_id, pas shop_id !)
+    let shop = null;
+    if (user.role === 'dg') {
+      const shopRes = await query('SELECT * FROM shops WHERE owner_id = $1', [user.id]);
+      shop = shopRes.rows[0] || null;
+    }
+
+    // 7. Nettoyage données sensibles avant envoi
+    delete user.password_hash;
+    delete user.secret_answer;
+
+    res.status(200).json({ success: true, user: { ...user, shop } });
 
   } catch (error) {
     console.error('Erreur login:', error);
-    res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
+    res.status(500).json({ error: 'Erreur serveur interne' });
   }
 }
