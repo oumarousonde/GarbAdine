@@ -3,47 +3,54 @@ import { query } from '../../lib/db.js';
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
+  // Log pour debuguer le 400
+  console.log('🔍 Login Request Body:', req.body);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
   }
 
   try {
-    // 1. CORRESPONDANCE EXACTE AVEC LE FRONTEND
     const { identifier, password, role } = req.body;
 
-    // 2. Validation stricte des 3 champs obligatoires
+    // Validation stricte avec message précis
     if (!identifier || !password || !role) {
+      console.warn('⚠️ Champs manquants:', { identifier: !!identifier, password: !!password, role: !!role });
       return res.status(400).json({ 
-        error: 'Champs manquants', 
+        error: 'Champs obligatoires manquants', 
         details: { identifier: !!identifier, password: !!password, role: !!role } 
       });
     }
 
-    // 3. Requête SQL dynamique selon le rôle choisi
+    // Construire la requête selon le rôle
     let sql, params;
     if (role === 'admin') {
       sql = 'SELECT * FROM users WHERE email = $1 AND role = $2';
       params = [identifier, role];
-    } else {
+    } else if (role === 'dg' || role === 'gerante') {
       sql = 'SELECT * FROM users WHERE phone = $1 AND role = $2';
       params = [identifier, role];
+    } else {
+      return res.status(400).json({ error: 'Rôle invalide. Utilisez admin, dg ou gerante.' });
     }
 
+    // Chercher l'utilisateur
+    console.log(' Exécution SQL:', sql, 'Params:', params);
     const userResult = await query(sql, params);
     
     if (userResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Identifiants incorrects' });
+      return res.status(401).json({ error: 'Numéro/email ou mot de passe incorrect' });
     }
 
     const user = userResult.rows[0];
 
-    // 4. Vérification mot de passe haché
+    // Vérifier le mot de passe haché
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
-    // 5. Vérification Abonnement (Sauf pour Admin)
+    // VÉRIFICATION CRITIQUE : Abonnement (Sauf pour Admin)
     if (role !== 'admin') {
       const now = new Date();
       const subEnd = new Date(user.subscription_end_date);
@@ -51,29 +58,34 @@ export default async function handler(req, res) {
       if (now > subEnd) {
         return res.status(403).json({ 
           error: 'ABONNEMENT_EXPIRE',
-          message: 'Votre période d\'essai est terminée. Contactez votre DG ou l\'Admin.'
+          message: 'Votre période d\'essai est terminée. Contactez votre DG ou l\'Admin GarbAdine.'
         });
       }
-      
-      // Calcul jours restants pour le badge dashboard
-      user.daysLeft = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
+
+      // Calculer les jours restants
+      const daysLeft = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
+      user.daysLeft = daysLeft;
     }
 
-    // 6. Récupération Boutique (via owner_id, pas shop_id !)
+    // Récupérer la boutique si c'est un DG
     let shop = null;
     if (user.role === 'dg') {
       const shopRes = await query('SELECT * FROM shops WHERE owner_id = $1', [user.id]);
       shop = shopRes.rows[0] || null;
     }
 
-    // 7. Nettoyage données sensibles avant envoi
+    // Réponse sécurité (sans données sensibles)
     delete user.password_hash;
     delete user.secret_answer;
 
-    res.status(200).json({ success: true, user: { ...user, shop } });
+    console.log('✅ Login réussi pour:', user.name);
+    res.status(200).json({ 
+      success: true, 
+      user: { ...user, shop } 
+    });
 
   } catch (error) {
-    console.error('Erreur login:', error);
-    res.status(500).json({ error: 'Erreur serveur interne' });
+    console.error('❌ Erreur login critique:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
   }
 }
