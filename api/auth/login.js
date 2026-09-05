@@ -1,18 +1,18 @@
 // api/auth/login.js
-import { Pool } from 'pg';
-import bcrypt from 'bcryptjs';
+const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
 
-// Configuration directe du Pool (comme test-db.js)
+// Configuration directe du Pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Requis pour Neon
+  ssl: { rejectUnauthorized: false },
 });
 
 // Fonction query locale
 const query = (text, params) => pool.query(text, params);
 
-export default async function handler(req, res) {
-  console.log(' Login Request Body:', req.body);
+module.exports = async function handler(req, res) {
+  console.log('🔍 Login Request Body:', req.body);
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     // Chercher l'utilisateur
-    console.log('📝 Exécution SQL:', sql.substring(0, 50) + '...');
+    console.log('📝 Exécution SQL...');
     const userResult = await query(sql, params);
     
     if (userResult.rows.length === 0) {
@@ -96,4 +96,4 @@ export default async function handler(req, res) {
     console.error('❌ Erreur login critique:', error);
     res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
   }
-}
+};
