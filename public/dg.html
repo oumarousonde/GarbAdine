@@ -62,7 +62,7 @@
       <h2 class="text-xl font-bold text-gray-800 mb-4">Actions Rapides</h2>
       <div class="flex flex-wrap gap-3">
         <button onclick="openGeranteModal()" class="px-5 py-3 rounded-xl gradient-primary text-white font-bold shadow-md hover:scale-[1.02] transition flex items-center gap-2">
-          👩‍💼 Inviter une Gérante (WhatsApp)
+          ‍💼 Inviter une Gérante (WhatsApp)
         </button>
         <button onclick="exportExcel()" id="btnExport" class="px-5 py-3 rounded-xl bg-white text-amber-700 font-bold shadow-md border-2 border-amber-200 hover:bg-amber-50 transition flex items-center gap-2">
            Exporter Rapport Excel
@@ -147,7 +147,6 @@
 
     async function loadDashboardData() {
       // TODO: Appeler /api/transactions/list?shopId=X&date=today pour les stats
-      // TODO: Appeler /api/admin/users?role=gerante&shopId=X pour la liste
       // Pour l'instant, affichage statique sécurisé basé sur la session
       document.getElementById('salesToday').textContent = '0 F';
       document.getElementById('expensesToday').textContent = '0 F';
@@ -158,7 +157,7 @@
     // ===== GESTION MODAL GÉRANTE =====
     function openGeranteModal() {
       if (user.isSubscriptionActive === false) {
-        alert("️ Votre abonnement est expiré. Vous ne pouvez pas ajouter de gérantes.");
+        alert("⚠️ Votre abonnement est expiré. Vous ne pouvez pas ajouter de gérantes.");
         return;
       }
       document.getElementById('geranteModal').classList.remove('hidden');
@@ -171,6 +170,7 @@
       document.getElementById('newGerantePass').value = '';
     }
 
+    // ✅ FONCTION CORRIGÉE : Crée le compte EN BASE AVANT d'ouvrir WhatsApp
     async function sendGeranteInvite() {
       const name = document.getElementById('newGeranteName').value.trim();
       const phone = document.getElementById('newGerantePhone').value.trim();
@@ -182,22 +182,50 @@
         return;
       }
 
-      btn.innerHTML = '<span class="spinner"></span> Envoi...';
+      btn.innerHTML = '<span class="spinner"></span> Création du compte...';
       btn.disabled = true;
 
-      // Génération lien WhatsApp avec message pré-rempli
-      const waMessage = `Bonjour ${name}! 👋\n\nVous avez été ajoutée comme Gérante chez ${user.shop?.name || 'GarbAdine'} ✅\n\n📱 Téléphone: ${phone}\n🔑 MDP Temporaire: ${pass}\n\nConnectez-vous ici: https://garb-adine.vercel.app/login.html\n\nSélectionnez le rôle "Gérante" lors de la connexion.\nMerci de rejoindre l'équipe! 🇧🇫`;
-      const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
+      try {
+        // 1. CRÉER LE COMPTE GÉRANTE EN BASE DE DONNÉES VIA L'API REGISTER
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            phone: phone,
+            password: pass,
+            role: 'gerante',
+            shopName: user.shop?.name || 'GarbAdine',
+            shopType: user.shop?.type || 'garbadrome',
+            location: user.shop?.location || '',
+            secretQuestion: 'animal',
+            secretAnswer: 'chat'
+          })
+        });
 
-      // TODO: Appeler POST /api/auth/register avec role:'gerante' pour créer le compte en DB
-      
-      setTimeout(() => {
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de la création du compte');
+        }
+
+        console.log('✅ Gérante créée en DB:', data.user.id);
+
+        // 2. SEULEMENT SI SUCCÈS → OUVRIR WHATSAPP AVEC LES IDENTIFIANTS
+        const waMessage = `Bonjour ${name}! 👋\n\nVous avez été ajoutée comme Gérante chez ${user.shop?.name || 'GarbAdine'} ✅\n\n📱 Téléphone: ${phone}\n🔑 MDP Temporaire: ${pass}\n\nConnectez-vous ici: https://garb-adine.vercel.app/login.html\n\nSélectionnez le rôle "Gérante" lors de la connexion.\nMerci de rejoindre l'équipe! 🇧🇫`;
+        const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
+
         window.open(waLink, '_blank');
         closeGeranteModal();
-        btn.innerHTML = 'Envoyer l\'invitation WhatsApp';
+        alert("✅ Compte gérante créé ET invitation WhatsApp envoyée !");
+
+      } catch (error) {
+        console.error('Erreur création gérante:', error);
+        alert("❌ Erreur: " + error.message);
+      } finally {
+        btn.innerHTML = "Envoyer l'invitation WhatsApp";
         btn.disabled = false;
-        alert("✅ Invitation envoyée via WhatsApp ! La gérante recevra ses identifiants.");
-      }, 1000);
+      }
     }
 
     // ===== EXPORT EXCEL =====
