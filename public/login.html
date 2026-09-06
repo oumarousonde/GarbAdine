@@ -21,7 +21,7 @@
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
 
   <div class="w-full max-w-md">
-    <!-- Logo -->
+    <!-- Logo avec fallback -->
     <div class="text-center mb-8 fade-in">
       <a href="/" class="inline-flex items-center gap-2 mb-4">
         <img src="/assets/logo.png" alt="GarbAdine" class="h-12 w-auto object-contain drop-shadow-lg" 
@@ -121,7 +121,7 @@
       </div>
     </div>
 
-    <p class="text-center text-sm text-amber-700 mt-6">© 2026 GarbAdine • Tous droits réservés</p>
+    <p class="text-center text-sm text-amber-700 mt-6">© 2026 GarbAdine • Tous droits réservés 🇧</p>
   </div>
 
   <script>
@@ -236,13 +236,11 @@
     }
 
     function checkRecovery() {
-      // TODO: Remplacer par appel API /api/auth/recover-step1
       alert("Fonctionnalité de récupération bientôt disponible via WhatsApp.");
       closeRecovery();
     }
 
     function validateRecovery() {
-      // TODO: Remplacer par appel API /api/auth/recover-step2
       alert("Veuillez contacter votre DG ou l'Admin pour réinitialiser votre mot de passe.");
       closeRecovery();
     }
