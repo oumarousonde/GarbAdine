@@ -1,1 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connexion - GarbAdine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+    .gradient-bg { background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%); }
+    .gradient-primary { background: linear-gradient(135deg, #D97706 0%, #B45309 100%); }
+    .fade-in { animation: fadeIn 0.4s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .role-btn.selected { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 8px; vertical-align: middle;}
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
 
+  <div class="w-full max-w-md">
+    <!-- Logo -->
+    <div class="text-center mb-8 fade-in">
+      <a href="/" class="inline-flex items-center gap-2 mb-4">
+        <img src="/assets/logo.png" alt="GarbAdine" class="h-12 w-auto object-contain drop-shadow-lg" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+        <div style="display:none;" class="w-12 h-12 rounded-xl gradient-primary items-center justify-center shadow-lg">
+          <span class="text-white font-extrabold text-xl">G</span>
+        </div>
+        <span class="text-3xl font-extrabold text-amber-900">Garb<span class="text-amber-700">Adine</span></span>
+      </a>
+      <h1 class="text-2xl font-bold text-gray-800">Connexion</h1>
+      <p class="text-sm text-gray-600 mt-2">Accédez à votre espace de gestion.</p>
+    </div>
+
+    <div class="glass rounded-3xl shadow-2xl p-8 fade-in">
+      
+      <!-- Messages d'erreur/succès -->
+      <div id="msgBox" class="hidden mb-4 p-3 rounded-xl text-sm font-semibold text-center"></div>
+
+      <!-- Formulaire de connexion -->
+      <form id="loginForm" class="space-y-4">
+        
+        <!-- Sélection du rôle -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-3">Je suis :</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-role="admin" class="role-btn py-3 px-2 rounded-xl bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition text-sm border-2 border-transparent">
+               Admin
+            </button>
+            <button type="button" data-role="dg" class="role-btn py-3 px-2 rounded-xl bg-emerald-100 text-emerald-700 font-semibold hover:bg-emerald-200 transition text-sm border-2 border-transparent">
+              💼 DG
+            </button>
+            <button type="button" data-role="gerante" class="role-btn py-3 px-2 rounded-xl bg-amber-100 text-amber-700 font-semibold hover:bg-amber-200 transition text-sm border-2 border-transparent">
+              👩‍💼 Gérante
+            </button>
+          </div>
+          <input type="hidden" id="selectedRole" required>
+        </div>
+
+        <!-- Champ Identifiant (Email ou Numéro) -->
+        <div>
+          <label id="idLabel" class="block text-sm font-semibold text-gray-700 mb-2">Identifiant</label>
+          <input type="text" id="identifier" placeholder="Choisissez un rôle ci-dessus" disabled required
+            class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80 transition disabled:bg-gray-100 disabled:text-gray-400"/>
+        </div>
+
+        <!-- Mot de passe -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Mot de passe</label>
+          <input type="password" id="password" placeholder="••••••••" required
+            class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80 transition"/>
+        </div>
+
+        <!-- Lien mot de passe oublié (caché pour admin) -->
+        <div id="forgotLinkContainer" class="hidden text-right">
+          <button type="button" onclick="showRecovery()" class="text-xs text-amber-600 font-bold hover:underline">
+            Mot de passe oublié ?
+          </button>
+        </div>
+
+        <button type="submit" id="btnLogin" class="w-full py-3 rounded-xl gradient-primary text-white font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center justify-center" disabled>
+          Se connecter
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">Pas encore de compte DG ?</p>
+        <a href="/register.html" class="text-amber-600 font-bold hover:underline">Créer un compte →</a>
+      </div>
+    </div>
+
+    <!-- ========== MODAL RÉCUPÉRATION ========== -->
+    <div id="recoveryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm fade-in">
+        <h3 class="text-xl font-bold text-gray-800 mb-4"> Récupération</h3>
+        
+        <div id="step1">
+          <p class="text-sm text-gray-600 mb-4">Entrez votre numéro pour vérifier votre identité.</p>
+          <input type="tel" id="recPhone" placeholder="Votre numéro" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none mb-4"/>
+          <button onclick="checkRecovery()" class="w-full py-3 rounded-xl gradient-primary text-white font-bold">Vérifier</button>
+        </div>
+
+        <div id="step2" class="hidden">
+          <p class="text-sm font-semibold text-gray-800 mb-2" id="recQuestionDisplay">Question ?</p>
+          <input type="text" id="recAnswer" placeholder="Votre réponse..." class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none mb-4"/>
+          <button onclick="validateRecovery()" class="w-full py-3 rounded-xl gradient-primary text-white font-bold">Valider</button>
+        </div>
+
+        <div id="step3" class="hidden text-center">
+          <div class="text-4xl mb-2">✅</div>
+          <p class="text-sm text-gray-600 mb-4">Votre nouveau mot de passe est :</p>
+          <div class="bg-amber-50 p-3 rounded-xl text-2xl font-mono font-bold text-amber-700 mb-4 select-all" id="newPassDisplay">------</div>
+          <p class="text-xs text-gray-500 mb-4">Notez-le bien ! Vous pourrez le changer plus tard.</p>
+          <button onclick="closeRecovery()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-800 font-bold hover:bg-gray-200 transition">Retour à la connexion</button>
+        </div>
+
+        <button onclick="closeRecovery()" class="mt-4 w-full text-sm text-gray-500 hover:text-gray-800">Annuler</button>
+      </div>
+    </div>
+
+    <p class="text-center text-sm text-amber-700 mt-6">© 2026 GarbAdine • Tous droits réservés</p>
+  </div>
+
+  <script>
+    // ===== GESTION DES RÔLES =====
+    const roleButtons = document.querySelectorAll('.role-btn');
+    const idInput = document.getElementById('identifier');
+    const idLabel = document.getElementById('idLabel');
+    const selectedRoleInput = document.getElementById('selectedRole');
+    const forgotLink = document.getElementById('forgotLinkContainer');
+    const btnLogin = document.getElementById('btnLogin');
+
+    roleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        roleButtons.forEach(b => {
+          b.classList.remove('selected', 'ring-2', 'ring-offset-2', 'border-purple-500', 'border-emerald-500', 'border-amber-500');
+        });
+        
+        btn.classList.add('selected', 'ring-2', 'ring-offset-2');
+        const role = btn.dataset.role;
+        selectedRoleInput.value = role;
+
+        if (role === 'admin') {
+          btn.classList.add('border-purple-500');
+          idLabel.textContent = "Email";
+          idInput.type = "email";
+          idInput.placeholder = "admin@garbadine.com";
+          forgotLink.classList.add('hidden');
+        } else {
+          const color = role === 'dg' ? 'border-emerald-500' : 'border-amber-500';
+          btn.classList.add(color);
+          idLabel.textContent = "Numéro de téléphone";
+          idInput.type = "tel";
+          idInput.placeholder = "07 07 07 07 07";
+          forgotLink.classList.remove('hidden');
+        }
+
+        idInput.disabled = false;
+        btnLogin.disabled = false;
+        idInput.focus();
+      });
+    });
+
+    // ===== CONNEXION VERS API NEON (REMPLACEMENT LOCALSTORAGE) =====
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showMsg('', ''); 
+
+      const identifier = document.getElementById('identifier').value.trim();
+      const password = document.getElementById('password').value;
+      const role = selectedRoleInput.value;
+      const originalBtnText = btnLogin.innerHTML;
+
+      if (!role) { showMsg("Veuillez choisir un rôle.", "error"); return; }
+      if (!identifier || !password) { showMsg("Veuillez remplir tous les champs.", "error"); return; }
+
+      // État de chargement
+      btnLogin.innerHTML = '<span class="spinner"></span> Connexion...';
+      btnLogin.disabled = true;
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password, role })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Sauvegarde session locale temporaire
+          localStorage.setItem('user', JSON.stringify(data.user));
+          if (data.user.shop?.id) {
+            localStorage.setItem('shopId', data.user.shop.id);
+          }
+          
+          // Redirection selon le rôle
+          const redirects = { admin: '/admin.html', dg: '/dg.html', gerante: '/gerante.html' };
+          window.location.href = redirects[role];
+          
+        } else {
+          // Gestion spécifique erreur abonnement
+          if (data.error === 'ABONNEMENT_EXPIRE') {
+            showMsg(`⚠️ ${data.message}`, "error");
+          } else {
+            showMsg(data.error || "Identifiants incorrects.", "error");
+          }
+          btnLogin.innerHTML = originalBtnText;
+          btnLogin.disabled = false;
+        }
+      } catch (error) {
+        console.error('Erreur login:', error);
+        showMsg("Erreur de connexion serveur. Vérifiez votre internet.", "error");
+        btnLogin.innerHTML = originalBtnText;
+        btnLogin.disabled = false;
+      }
+    });
+
+    // ===== RÉCUPÉRATION MOT DE PASSE (SIMULATION LOCALE POUR L'INSTANT) =====
+    let tempRecUserIndex = -1;
+
+    function showRecovery() {
+      document.getElementById('recoveryModal').classList.remove('hidden');
+      document.getElementById('step1').classList.remove('hidden');
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('step3').classList.add('hidden');
+      document.getElementById('recPhone').value = '';
+      document.getElementById('recAnswer').value = '';
+    }
+
+    function closeRecovery() {
+      document.getElementById('recoveryModal').classList.add('hidden');
+    }
+
+    function checkRecovery() {
+      // TODO: Remplacer par appel API /api/auth/recover-step1
+      alert("Fonctionnalité de récupération bientôt disponible via WhatsApp.");
+      closeRecovery();
+    }
+
+    function validateRecovery() {
+      // TODO: Remplacer par appel API /api/auth/recover-step2
+      alert("Veuillez contacter votre DG ou l'Admin pour réinitialiser votre mot de passe.");
+      closeRecovery();
+    }
+
+    // ===== UTILS =====
+    function showMsg(text, type) {
+      const el = document.getElementById('msgBox');
+      if (!text) { el.classList.add('hidden'); return; }
+      el.textContent = text;
+      el.className = `mb-4 p-3 rounded-xl text-sm font-semibold text-center ${type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`;
+      el.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
