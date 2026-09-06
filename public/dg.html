@@ -1,1 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard DG - GarbAdine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+    .gradient-bg { background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%); }
+    .gradient-primary { background: linear-gradient(135deg, #D97706 0%, #B45309 100%); }
+    .fade-in { animation: fadeIn 0.4s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 8px;}
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen p-4 md:p-8">
+  
+  <!-- Header avec Logo et Badge Abonnement -->
+  <div class="max-w-6xl mx-auto mb-8 fade-in">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 glass rounded-3xl p-4 shadow-lg">
+      <a href="/" class="inline-flex items-center gap-2">
+        <img src="/assets/logo.png" alt="GarbAdine" class="h-10 w-auto object-contain drop-shadow-md" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+        <div style="display:none;" class="w-10 h-10 rounded-xl gradient-primary items-center justify-center shadow-md">
+          <span class="text-white font-extrabold text-lg">G</span>
+        </div>
+        <span class="text-2xl font-extrabold text-amber-900">Garb<span class="text-amber-700">Adine</span></span>
+      </a>
+      
+      <div id="subscriptionBadge" class="px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm shadow-sm flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Chargement...
+      </div>
+    </div>
+  </div>
 
+  <!-- Contenu Principal -->
+  <div class="max-w-6xl mx-auto space-y-6 fade-in">
+    
+    <!-- Stats du Jour -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="glass rounded-3xl p-6 shadow-lg border-l-4 border-emerald-500">
+        <p class="text-sm text-gray-500 font-semibold mb-1">Ventes du jour</p>
+        <p id="salesToday" class="text-3xl font-extrabold text-gray-800">-- F</p>
+      </div>
+      <div class="glass rounded-3xl p-6 shadow-lg border-l-4 border-red-500">
+        <p class="text-sm text-gray-500 font-semibold mb-1">Dépenses du jour</p>
+        <p id="expensesToday" class="text-3xl font-extrabold text-gray-800">-- F</p>
+      </div>
+      <div class="glass rounded-3xl p-6 shadow-lg border-l-4 border-amber-500">
+        <p class="text-sm text-gray-500 font-semibold mb-1">Bénéfice Net</p>
+        <p id="profitToday" class="text-3xl font-extrabold text-gray-800">-- F</p>
+      </div>
+    </div>
+
+    <!-- Actions Rapides -->
+    <div class="glass rounded-3xl p-6 shadow-lg">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Actions Rapides</h2>
+      <div class="flex flex-wrap gap-3">
+        <button onclick="openGeranteModal()" class="px-5 py-3 rounded-xl gradient-primary text-white font-bold shadow-md hover:scale-[1.02] transition flex items-center gap-2">
+          👩‍💼 Inviter une Gérante (WhatsApp)
+        </button>
+        <button onclick="exportExcel()" id="btnExport" class="px-5 py-3 rounded-xl bg-white text-amber-700 font-bold shadow-md border-2 border-amber-200 hover:bg-amber-50 transition flex items-center gap-2">
+           Exporter Rapport Excel
+        </button>
+      </div>
+    </div>
+
+    <!-- Liste des Gérantes -->
+    <div class="glass rounded-3xl p-6 shadow-lg">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Mes Gérantes</h2>
+        <span id="geranteCount" class="text-sm text-gray-500 font-semibold">Chargement...</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-amber-100/50 text-amber-900">
+            <tr>
+              <th class="p-4 rounded-tl-xl">Nom</th>
+              <th class="p-4">Téléphone</th>
+              <th class="p-4">Dernière activité</th>
+              <th class="p-4 rounded-tr-xl">Action</th>
+            </tr>
+          </thead>
+          <tbody id="gerantesTableBody" class="bg-white/30">
+            <tr><td colspan="4" class="p-4 text-center text-gray-500">Aucune gérante enregistrée.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bouton Déconnexion -->
+    <div class="text-center pb-8">
+      <button onclick="logout()" class="px-6 py-3 rounded-xl bg-red-100 text-red-700 font-bold hover:bg-red-200 transition">
+        Se déconnecter
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Invitation Gérante -->
+  <div id="geranteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="glass rounded-3xl shadow-2xl p-8 w-full max-w-md fade-in">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Inviter une nouvelle gérante</h3>
+      <div class="space-y-4">
+        <input type="text" id="newGeranteName" placeholder="Nom complet" required class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80"/>
+        <input type="tel" id="newGerantePhone" placeholder="Numéro WhatsApp (ex: 22670000000)" required class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80"/>
+        <input type="password" id="newGerantePass" placeholder="Mot de passe temporaire" required minlength="6" class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80"/>
+        
+        <button onclick="sendGeranteInvite()" id="btnSendInvite" class="w-full py-3 rounded-xl gradient-primary text-white font-bold shadow-lg hover:shadow-xl transition flex items-center justify-center">
+          Envoyer l'invitation WhatsApp
+        </button>
+        <button onclick="closeGeranteModal()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== VÉRIFICATION SESSION & ABONNEMENT =====
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id || user.role !== 'dg') {
+      window.location.href = '/login.html';
+    } else {
+      // Mise à jour badge abonnement
+      const badge = document.getElementById('subscriptionBadge');
+      if (user.isSubscriptionActive === false || user.daysLeft <= 0) {
+        badge.className = 'px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold text-sm shadow-sm flex items-center gap-2 animate-pulse';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> ABONNEMENT EXPIRÉ';
+        
+        // Mode lecture seule si expiré
+        document.getElementById('btnExport').disabled = true;
+        document.getElementById('btnExport').classList.add('opacity-50', 'cursor-not-allowed');
+        document.getElementById('btnExport').textContent = '⛔ Export bloqué (Abonnement expiré)';
+      } else {
+        badge.textContent = `${user.daysLeft} jours d'essai restants`;
+        if (user.daysLeft <= 3) {
+          badge.className = 'px-4 py-2 rounded-full bg-orange-100 text-orange-800 font-bold text-sm shadow-sm flex items-center gap-2';
+        }
+      }
+
+      // Charger les données (Placeholder pour stats et gérantes)
+      loadDashboardData();
+    }
+
+    async function loadDashboardData() {
+      // TODO: Appeler /api/transactions/list?shopId=X&date=today pour les stats
+      // TODO: Appeler /api/admin/users?role=gerante&shopId=X pour la liste
+      // Pour l'instant, affichage statique sécurisé basé sur la session
+      document.getElementById('salesToday').textContent = '0 F';
+      document.getElementById('expensesToday').textContent = '0 F';
+      document.getElementById('profitToday').textContent = '0 F';
+      document.getElementById('geranteCount').textContent = '0 gérante(s)';
+    }
+
+    // ===== GESTION MODAL GÉRANTE =====
+    function openGeranteModal() {
+      if (user.isSubscriptionActive === false) {
+        alert("️ Votre abonnement est expiré. Vous ne pouvez pas ajouter de gérantes.");
+        return;
+      }
+      document.getElementById('geranteModal').classList.remove('hidden');
+    }
+
+    function closeGeranteModal() {
+      document.getElementById('geranteModal').classList.add('hidden');
+      document.getElementById('newGeranteName').value = '';
+      document.getElementById('newGerantePhone').value = '';
+      document.getElementById('newGerantePass').value = '';
+    }
+
+    async function sendGeranteInvite() {
+      const name = document.getElementById('newGeranteName').value.trim();
+      const phone = document.getElementById('newGerantePhone').value.trim();
+      const pass = document.getElementById('newGerantePass').value;
+      const btn = document.getElementById('btnSendInvite');
+
+      if (!name || !phone || !pass) {
+        alert("Veuillez remplir tous les champs.");
+        return;
+      }
+
+      btn.innerHTML = '<span class="spinner"></span> Envoi...';
+      btn.disabled = true;
+
+      // Génération lien WhatsApp avec message pré-rempli
+      const waMessage = `Bonjour ${name}! 👋\n\nVous avez été ajoutée comme Gérante chez ${user.shop?.name || 'GarbAdine'} ✅\n\n📱 Téléphone: ${phone}\n🔑 MDP Temporaire: ${pass}\n\nConnectez-vous ici: https://garb-adine.vercel.app/login.html\n\nSélectionnez le rôle "Gérante" lors de la connexion.\nMerci de rejoindre l'équipe! 🇧🇫`;
+      const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
+
+      // TODO: Appeler POST /api/auth/register avec role:'gerante' pour créer le compte en DB
+      
+      setTimeout(() => {
+        window.open(waLink, '_blank');
+        closeGeranteModal();
+        btn.innerHTML = 'Envoyer l\'invitation WhatsApp';
+        btn.disabled = false;
+        alert("✅ Invitation envoyée via WhatsApp ! La gérante recevra ses identifiants.");
+      }, 1000);
+    }
+
+    // ===== EXPORT EXCEL =====
+    async function exportExcel() {
+      if (user.isSubscriptionActive === false) {
+        alert("⚠️ Export impossible : Abonnement expiré.");
+        return;
+      }
+      // TODO: Appeler GET /api/transactions/export?shopId=X&format=excel
+      alert("📥 Génération du rapport Excel en cours... (Fonctionnalité API à connecter)");
+    }
+
+    // ===== DÉCONNEXION =====
+    function logout() {
+      localStorage.removeItem('user');
+      localStorage.removeItem('shopId');
+      window.location.href = '/login.html';
+    }
+  </script>
+</body>
+</html>
