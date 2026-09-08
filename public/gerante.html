@@ -15,18 +15,21 @@
     .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(217, 119, 6, 0.15); }
     .fade-in { animation: fadeIn 0.4s ease-in; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    
+
     /* Onglets */
     .tab-btn { transition: all 0.2s; border-bottom: 3px solid transparent; }
     .tab-btn.active-expense { border-bottom-color: #EF4444; color: #991B1B; font-weight: 700; background: rgba(239, 68, 68, 0.05); }
     .tab-btn.active-sale { border-bottom-color: #10B981; color: #065F46; font-weight: 700; background: rgba(16, 185, 129, 0.05); }
-    
+
     .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 8px;}
     @keyframes spin { to { transform: rotate(360deg); } }
-    
+
     .toast { animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards; }
     @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeOut { to { opacity: 0; transform: translateY(-100%); } }
+
+    .badge-blink { animation: blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   </style>
 </head>
 <body class="gradient-bg min-h-screen p-4 md:p-8">
@@ -39,16 +42,19 @@
   <div class="max-w-4xl mx-auto pt-12 md:pt-0">
 
     <!-- ========== HEADER ========== -->
-    <div class="flex items-center justify-between mb-6 fade-in">
+    <div class="flex items-center justify-between mb-4 fade-in flex-wrap gap-3">
       <div>
         <h1 class="text-3xl font-extrabold text-gray-800">Bonjour <span id="geranteName">Gérante</span> 👋</h1>
         <p class="text-gray-600 mt-1">📍 <span id="shopName">Mon établissement</span></p>
       </div>
       <div class="flex items-center gap-3">
-        <div class="glass rounded-full px-4 py-2 flex items-center gap-2">
+        <div id="subscriptionBadge" class="px-3 py-2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs shadow-sm flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> --
+        </div>
+        <button onclick="openProfileModal()" class="glass rounded-full px-4 py-2 flex items-center gap-2" title="Mon compte">
           <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold" id="geranteInitial">G</div>
           <span class="font-semibold text-gray-700 hidden sm:inline" id="geranteNameSmall">Gérante</span>
-        </div>
+        </button>
         <button onclick="logout()" class="p-2 rounded-full bg-white hover:bg-red-50 transition" title="Déconnexion">
           <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         </button>
@@ -89,7 +95,7 @@
     <!-- FORMULAIRE DE SAISIE                       -->
     <!-- ========================================== -->
     <div class="bg-white rounded-3xl shadow-xl p-5 md:p-6 mb-6 fade-in relative">
-      
+
       <!-- Overlay Lecture Seule -->
       <div id="readOnlyOverlay" class="hidden absolute inset-0 bg-white/80 backdrop-blur-sm rounded-3xl z-10 flex items-center justify-center">
         <div class="text-center p-6">
@@ -107,14 +113,15 @@
       </div>
 
       <form id="entryForm" class="space-y-5">
-        
-        <!-- Catégorie (Auto-complétion) -->
+
+        <!-- Catégorie (sélection rapide, propre à la boutique) -->
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-2">1️⃣ Catégorie</label>
-          <input type="text" id="categoryInput" list="categoryList" placeholder="Ex: Attieké, Oignon, Eau..." required autocomplete="off"
-            class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none text-lg font-bold text-gray-800"/>
-          <datalist id="categoryList"></datalist>
-          <p class="text-xs text-gray-500 mt-1">Tapez pour chercher ou créer une nouvelle catégorie.</p>
+          <div id="categoryChips" class="flex flex-wrap gap-2 mb-1">
+            <!-- Rempli par JS -->
+          </div>
+          <input type="hidden" id="categoryInput" required/>
+          <p class="text-xs text-gray-500 mt-1">Touchez une catégorie, ou "+ Nouvelle" pour en créer une (visible ensuite par toute l'équipe).</p>
         </div>
 
         <!-- Description & Date -->
@@ -142,7 +149,7 @@
             <label class="block text-sm font-semibold text-gray-700 mb-2">💲 Prix Unitaire</label>
             <input type="number" id="priceInput" placeholder="0" min="0" required oninput="calcTotal()"
               class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none text-center font-bold text-lg"/>
-            
+
             <!-- Prix Rapides -->
             <div class="flex gap-2 mt-2 justify-center">
               <button type="button" onclick="setPrice(500)" class="px-2 py-1 rounded bg-gray-100 text-xs font-bold hover:bg-amber-100 transition">500</button>
@@ -156,19 +163,26 @@
         <!-- Mode de Paiement (Uniquement pour Ventes) -->
         <div id="paymentSection" class="hidden">
           <label class="block text-sm font-semibold text-gray-700 mb-2">💳 Mode de Paiement</label>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-3 gap-3">
             <label class="cursor-pointer">
               <input type="radio" name="payment" value="cash" checked class="peer sr-only">
               <div class="p-3 rounded-xl border-2 border-gray-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 text-center transition">
                 <span class="text-xl block mb-1">💵</span>
-                <span class="text-sm font-bold text-gray-700">Cash</span>
+                <span class="text-xs font-bold text-gray-700">Cash</span>
               </div>
             </label>
             <label class="cursor-pointer">
               <input type="radio" name="payment" value="om" class="peer sr-only">
               <div class="p-3 rounded-xl border-2 border-gray-200 peer-checked:border-orange-500 peer-checked:bg-orange-50 text-center transition">
                 <span class="text-xl block mb-1">📱</span>
-                <span class="text-sm font-bold text-gray-700">Orange Money</span>
+                <span class="text-xs font-bold text-gray-700">Orange Money</span>
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="payment" value="pending" class="peer sr-only">
+              <div class="p-3 rounded-xl border-2 border-gray-200 peer-checked:border-amber-500 peer-checked:bg-amber-50 text-center transition">
+                <span class="text-xl block mb-1">⏳</span>
+                <span class="text-xs font-bold text-gray-700">En attente</span>
               </div>
             </label>
           </div>
@@ -189,7 +203,7 @@
     <!-- ========== HISTORIQUE DU JOUR ========== -->
     <div class="bg-white rounded-2xl shadow-sm p-5 md:p-6 fade-in">
       <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-         Historique du jour 
+         Historique du jour
         <span class="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full" id="historyCount">0</span>
       </h3>
       <div id="historyList" class="space-y-3">
@@ -200,6 +214,30 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ========== MODAL MON COMPTE ========== -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm fade-in">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Mon compte</h3>
+      <div id="profileMsg" class="hidden mb-3 p-3 rounded-xl text-sm font-semibold text-center"></div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Numéro de téléphone</label>
+          <input type="tel" id="profPhone" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nouveau mot de passe (optionnel)</label>
+          <input type="password" id="profNewPass" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Mot de passe actuel (confirmation)</label>
+          <input type="password" id="profCurrentPass" required autocomplete="current-password" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <button onclick="saveProfile()" id="btnSaveProfile" class="w-full py-3 rounded-xl gradient-primary text-white font-bold shadow-lg hover:shadow-xl transition">Enregistrer</button>
+        <button onclick="closeProfileModal()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">Fermer</button>
+      </div>
+    </div>
   </div>
 
   <!-- ========== JAVASCRIPT ========== -->
@@ -215,7 +253,11 @@
       document.getElementById('geranteInitial').textContent = user.name[0];
       document.getElementById('shopName').textContent = user.shop?.name || 'Mon établissement';
       document.getElementById('dateInput').valueAsDate = new Date();
-      
+
+      // Badge d'abonnement (visible aussi pour la gérante, synchronisé avec le DG)
+      renderSubscriptionBadge();
+      refreshSubscriptionStatus();
+
       // Vérification abonnement
       if (user.isSubscriptionActive === false) {
         document.getElementById('expiredBanner').classList.remove('hidden');
@@ -224,17 +266,70 @@
         document.getElementById('submitBtn').classList.add('opacity-50', 'cursor-not-allowed');
       }
 
-      loadCategories();
+      loadCategoryChips();
       loadTodayStats();
       loadHistory();
     }
 
-    let currentType = 'expense'; // 'expense' ou 'sale'
+    // Rafraîchit le statut d'abonnement depuis la base (sans exiger une reconnexion) :
+    // utile si le DG vient de renouveler pendant que la gérante était déjà connectée.
+    async function refreshSubscriptionStatus() {
+      try {
+        const shopId = getShopId();
+        if (!shopId) return;
+        const res = await fetch(`/api/shops/status?shopId=${shopId}`);
+        const data = await res.json();
+        if (data.success) {
+          user.isSubscriptionActive = data.isSubscriptionActive;
+          user.daysLeft = data.daysLeft;
+          localStorage.setItem('user', JSON.stringify(user));
+          renderSubscriptionBadge();
+
+          const overlay = document.getElementById('readOnlyOverlay');
+          const banner = document.getElementById('expiredBanner');
+          const btn = document.getElementById('submitBtn');
+          if (!data.isSubscriptionActive) {
+            banner.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+          } else {
+            banner.classList.add('hidden');
+            overlay.classList.add('hidden');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+        }
+      } catch (e) {
+        console.error('Erreur rafraîchissement abonnement:', e);
+      }
+    }
+
+    function renderSubscriptionBadge() {
+      const badge = document.getElementById('subscriptionBadge');
+      const days = user.daysLeft;
+      if (user.isSubscriptionActive === false || days <= 0) {
+        badge.className = 'px-3 py-2 rounded-full bg-red-100 text-red-800 font-bold text-xs shadow-sm flex items-center gap-2 badge-blink';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> Abonnement expiré';
+      } else if (days <= 3) {
+        badge.className = 'px-3 py-2 rounded-full bg-red-100 text-red-800 font-bold text-xs shadow-sm flex items-center gap-2 badge-blink';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span> ${days} jour(s) restant(s)`;
+      } else {
+        badge.className = 'px-3 py-2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs shadow-sm flex items-center gap-2';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${days} jours restants`;
+      }
+    }
+
+    function getShopId() {
+      return user.shop?.id || localStorage.getItem('shopId');
+    }
 
     // ===== GESTION DES ONGLETS =====
+    let currentType = 'expense'; // 'expense' ou 'sale' (traduit en 'depense'/'vente' à l'envoi)
+
     function switchTab(type) {
       currentType = type;
-      
+
       const btnExp = document.getElementById('tab-expense');
       const btnSale = document.getElementById('tab-sale');
       const title = document.getElementById('formTitle');
@@ -251,8 +346,9 @@
         title.textContent = "Nouvelle Vente (Recette)";
         paySection.classList.remove('hidden');
       }
-      
+
       calcTotal();
+      loadCategoryChips();
     }
 
     // ===== CALCUL AUTOMATIQUE =====
@@ -268,16 +364,96 @@
       document.getElementById('totalDisplay').textContent = total.toLocaleString('fr-FR');
     }
 
-    // ===== CATÉGORIES (LocalStorage local pour UX rapide) =====
-    function loadCategories() {
-      const cats = JSON.parse(localStorage.getItem('categories') || '[]');
-      const datalist = document.getElementById('categoryList');
-      datalist.innerHTML = '';
-      cats.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c;
-        datalist.appendChild(opt);
+    // ===== CATÉGORIES (partagées pour toute la boutique, via l'API) =====
+    let selectedCategory = null;
+
+    function apiType() {
+      return currentType === 'sale' ? 'vente' : 'depense';
+    }
+
+    async function loadCategoryChips() {
+      selectedCategory = null;
+      document.getElementById('categoryInput').value = '';
+      const container = document.getElementById('categoryChips');
+      container.innerHTML = '<span class="text-xs text-gray-400">Chargement...</span>';
+
+      try {
+        const shopId = getShopId();
+        const res = await fetch(`/api/shops/categories?shopId=${shopId}&type=${apiType()}`);
+        const data = await res.json();
+        const categories = data.success ? data.categories : [];
+
+        container.innerHTML = '';
+        categories.forEach(cat => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'category-chip px-4 py-2 rounded-full border-2 border-gray-200 font-bold text-sm text-gray-700 flex items-center gap-2';
+          chip.dataset.name = cat.name;
+          chip.innerHTML = `<span>${cat.name}</span>`;
+          chip.onclick = () => selectCategory(cat.name, chip);
+
+          const delBtn = document.createElement('span');
+          delBtn.innerHTML = '×';
+          delBtn.className = 'text-gray-400 hover:text-red-500 font-bold ml-1';
+          delBtn.onclick = (e) => { e.stopPropagation(); deleteCategoryChip(cat.id, cat.name); };
+          chip.appendChild(delBtn);
+
+          container.appendChild(chip);
+        });
+
+        const addChip = document.createElement('button');
+        addChip.type = 'button';
+        addChip.className = 'px-4 py-2 rounded-full border-2 border-dashed border-amber-300 font-bold text-sm text-amber-600';
+        addChip.textContent = '+ Nouvelle';
+        addChip.onclick = addNewCategory;
+        container.appendChild(addChip);
+
+      } catch (e) {
+        console.error('Erreur chargement catégories:', e);
+        container.innerHTML = '<span class="text-xs text-red-500">Erreur de chargement des catégories.</span>';
+      }
+    }
+
+    function selectCategory(name, chipEl) {
+      selectedCategory = name;
+      document.getElementById('categoryInput').value = name;
+      document.querySelectorAll('.category-chip').forEach(c => {
+        c.classList.remove('border-amber-500', 'bg-amber-50', 'text-amber-800');
       });
+      chipEl.classList.add('border-amber-500', 'bg-amber-50', 'text-amber-800');
+    }
+
+    async function addNewCategory() {
+      const name = prompt('Nom de la nouvelle catégorie (ex: Riz, Piment, Transport...) :');
+      if (!name || !name.trim()) return;
+
+      try {
+        const res = await fetch('/api/shops/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shopId: getShopId(), type: apiType(), name: name.trim() })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          await loadCategoryChips();
+          const newChip = Array.from(document.querySelectorAll('.category-chip')).find(c => c.dataset.name === data.category.name);
+          if (newChip) selectCategory(data.category.name, newChip);
+        } else {
+          alert(data.error || 'Erreur lors de la création de la catégorie.');
+        }
+      } catch (e) {
+        alert('Erreur de connexion serveur.');
+      }
+    }
+
+    async function deleteCategoryChip(id, name) {
+      if (!confirm(`Supprimer la catégorie "${name}" ? (Les saisies déjà enregistrées avec ce nom restent intactes.)`)) return;
+      try {
+        const res = await fetch(`/api/shops/categories?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok && data.success) loadCategoryChips();
+        else alert(data.error || 'Erreur.');
+      } catch (e) { alert('Erreur de connexion serveur.'); }
     }
 
     // ===== SOUMISSION FORMULAIRE VERS API NEON =====
@@ -288,25 +464,22 @@
 
       const submitBtn = document.getElementById('submitBtn');
       const originalText = submitBtn.innerHTML;
-      
+
       const category = document.getElementById('categoryInput').value;
       const desc = document.getElementById('descInput').value;
       const date = document.getElementById('dateInput').value;
       const qty = parseFloat(document.getElementById('qtyInput').value);
       const unitPrice = parseFloat(document.getElementById('priceInput').value);
       const total = qty * unitPrice;
-      
+
+      if (!category) {
+        alert('Choisissez une catégorie (ou créez-en une avec "+ Nouvelle").');
+        return;
+      }
+
       let payment = 'cash';
       if (currentType === 'sale') {
         payment = document.querySelector('input[name="payment"]:checked').value;
-      }
-
-      // Sauvegarder catégorie localement pour autocomplétion future
-      let cats = JSON.parse(localStorage.getItem('categories') || '[]');
-      if (!cats.includes(category)) {
-        cats.push(category);
-        localStorage.setItem('categories', JSON.stringify(cats));
-        loadCategories();
       }
 
       // État de chargement
@@ -318,9 +491,9 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            shopId: user.shop?.id || localStorage.getItem('shopId'),
+            shopId: getShopId(),
             geranteId: user.id,
-            type: currentType,
+            type: currentType === 'sale' ? 'vente' : 'depense',
             category,
             description: desc,
             quantity: qty,
@@ -335,17 +508,21 @@
 
         if (response.ok && data.success) {
           showToast(currentType === 'sale' ? '✅ Vente enregistrée !' : '✅ Dépense enregistrée !');
-          
+
           // Reset partiel formulaire
           document.getElementById('descInput').value = '';
           document.getElementById('qtyInput').value = '1';
           document.getElementById('priceInput').value = '';
           document.getElementById('totalDisplay').textContent = '0';
-          
+
           // Rafraîchir stats et historique
           loadTodayStats();
           loadHistory();
-          
+
+        } else if (data.error === 'ABONNEMENT_EXPIRE') {
+          document.getElementById('expiredBanner').classList.remove('hidden');
+          document.getElementById('readOnlyOverlay').classList.remove('hidden');
+          alert("⚠️ Abonnement expiré. Contactez votre DG.");
         } else {
           alert(data.error || "Erreur lors de l'enregistrement.");
         }
@@ -358,59 +535,58 @@
       }
     });
 
-    // ===== CHARGEMENT STATS & HISTORIQUE (Placeholder API) =====
+    // ===== CHARGEMENT STATS & HISTORIQUE (API réelle) =====
     async function loadTodayStats() {
-      // TODO: Appeler GET /api/transactions/stats?shopId=X&date=today
-      // Pour l'instant, affichage temporaire basé sur localStorage local
-      const allData = JSON.parse(localStorage.getItem('transactions_local_backup') || '[]');
-      const today = new Date().toISOString().split('T')[0];
-      
-      let sales = 0, expenses = 0;
-      allData.forEach(i => {
-        if (i.date === today && i.geranteId === user.id) {
-          if (i.type === 'sale') sales += i.total;
-          else expenses += i.total;
+      try {
+        const shopId = getShopId();
+        const res = await fetch(`/api/transactions/list?shopId=${shopId}&geranteId=${user.id}&period=today`);
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('todaySales').textContent = data.stats.sales.toLocaleString('fr-FR') + ' F';
+          document.getElementById('todayExpenses').textContent = data.stats.expenses.toLocaleString('fr-FR') + ' F';
         }
-      });
-
-      document.getElementById('todaySales').textContent = sales.toLocaleString('fr-FR') + ' F';
-      document.getElementById('todayExpenses').textContent = expenses.toLocaleString('fr-FR') + ' F';
+      } catch (e) {
+        console.error('Erreur stats:', e);
+      }
     }
 
     async function loadHistory() {
-      // TODO: Appeler GET /api/transactions/list?shopId=X&geranteId=Y&date=today
-      const allData = JSON.parse(localStorage.getItem('transactions_local_backup') || '[]');
-      const today = new Date().toISOString().split('T')[0];
-      
-      const myItems = allData.filter(i => i.date === today && i.geranteId === user.id)
-                             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      try {
+        const shopId = getShopId();
+        const res = await fetch(`/api/transactions/list?shopId=${shopId}&geranteId=${user.id}&period=today`);
+        const data = await res.json();
 
-      const container = document.getElementById('historyList');
-      const emptyMsg = document.getElementById('emptyHistory');
-      document.getElementById('historyCount').textContent = myItems.length;
+        const container = document.getElementById('historyList');
+        const emptyMsg = document.getElementById('emptyHistory');
+        const items = data.success ? data.transactions : [];
+        document.getElementById('historyCount').textContent = items.length;
 
-      container.innerHTML = '';
-      if (myItems.length === 0) {
-        emptyMsg.classList.remove('hidden');
-      } else {
-        emptyMsg.classList.add('hidden');
-        myItems.forEach(item => {
-          const isSale = item.type === 'sale';
-          container.innerHTML += `
-            <div class="flex items-center justify-between p-3 rounded-xl ${isSale ? 'bg-emerald-50' : 'bg-red-50'} border border-transparent hover:border-gray-200 transition">
-              <div class="flex items-center gap-3">
-                <div class="text-xl">${isSale ? '💰' : '📉'}</div>
-                <div>
-                  <p class="font-bold text-gray-800 text-sm">${item.category} <span class="text-gray-500 font-normal">(${item.desc})</span></p>
-                  <p class="text-xs text-gray-500">Qté: ${item.qty} • ${item.payment === 'om' ? ' OM' : '💵 Cash'}</p>
+        container.innerHTML = '';
+        if (items.length === 0) {
+          emptyMsg.classList.remove('hidden');
+        } else {
+          emptyMsg.classList.add('hidden');
+          items.forEach(item => {
+            const isSale = item.type === 'vente';
+            const payLabel = item.payment_mode === 'om' ? '📱 OM' : (item.payment_mode === 'pending' ? '⏳ En attente' : '💵 Cash');
+            container.innerHTML += `
+              <div class="flex items-center justify-between p-3 rounded-xl ${isSale ? 'bg-emerald-50' : 'bg-red-50'} border border-transparent hover:border-gray-200 transition">
+                <div class="flex items-center gap-3">
+                  <div class="text-xl">${isSale ? '💰' : '📉'}</div>
+                  <div>
+                    <p class="font-bold text-gray-800 text-sm">${item.category} <span class="text-gray-500 font-normal">(${item.description || ''})</span></p>
+                    <p class="text-xs text-gray-500">Qté: ${item.quantity} • ${isSale ? payLabel : ''}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="font-extrabold ${isSale ? 'text-emerald-600' : 'text-red-600'}">${Number(item.total_amount).toLocaleString('fr-FR')} F</span>
                 </div>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="font-extrabold ${isSale ? 'text-emerald-600' : 'text-red-600'}">${item.total.toLocaleString()} F</span>
-              </div>
-            </div>
-          `;
-        });
+            `;
+          });
+        }
+      } catch (e) {
+        console.error('Erreur historique:', e);
       }
     }
 
@@ -419,6 +595,64 @@
       document.getElementById('toastMsg').textContent = msg;
       t.classList.remove('hidden');
       setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    // ===== MODAL MON COMPTE =====
+    function openProfileModal() {
+      document.getElementById('profPhone').value = user.phone || '';
+      document.getElementById('profNewPass').value = '';
+      document.getElementById('profCurrentPass').value = '';
+      document.getElementById('profileModal').classList.remove('hidden');
+    }
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.add('hidden');
+    }
+
+    async function saveProfile() {
+      const newPhone = document.getElementById('profPhone').value.trim();
+      const newPassword = document.getElementById('profNewPass').value;
+      const currentPassword = document.getElementById('profCurrentPass').value;
+      const msg = document.getElementById('profileMsg');
+
+      if (!currentPassword) {
+        msg.textContent = 'Entrez votre mot de passe actuel pour confirmer.';
+        msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveProfile');
+      btn.disabled = true;
+      btn.textContent = 'Enregistrement...';
+
+      try {
+        const res = await fetch('/api/users/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, currentPassword, newPhone, newPassword: newPassword || undefined })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          user.phone = data.user.phone;
+          localStorage.setItem('user', JSON.stringify(user));
+          msg.textContent = '✅ Compte mis à jour !';
+          msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-emerald-50 text-emerald-700';
+          msg.classList.remove('hidden');
+          setTimeout(closeProfileModal, 1200);
+        } else {
+          msg.textContent = data.error || 'Erreur lors de la mise à jour.';
+          msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+          msg.classList.remove('hidden');
+        }
+      } catch (e) {
+        msg.textContent = 'Erreur de connexion serveur.';
+        msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+        msg.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enregistrer';
+      }
     }
 
     function logout() {

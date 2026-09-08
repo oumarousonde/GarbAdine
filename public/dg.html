@@ -15,40 +15,59 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 8px;}
     @keyframes spin { to { transform: rotate(360deg); } }
+    .badge-blink { animation: blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   </style>
 </head>
 <body class="gradient-bg min-h-screen p-4 md:p-8">
-  
+
   <!-- Header avec Logo et Badge Abonnement -->
   <div class="max-w-6xl mx-auto mb-8 fade-in">
     <div class="flex flex-col md:flex-row items-center justify-between gap-4 glass rounded-3xl p-4 shadow-lg">
       <a href="/" class="inline-flex items-center gap-2">
-        <img src="/assets/logo.png" alt="GarbAdine" class="h-10 w-auto object-contain drop-shadow-md" 
+        <img src="/assets/logo.png" alt="GarbAdine" class="h-10 w-auto object-contain drop-shadow-md"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
         <div style="display:none;" class="w-10 h-10 rounded-xl gradient-primary items-center justify-center shadow-md">
           <span class="text-white font-extrabold text-lg">G</span>
         </div>
         <span class="text-2xl font-extrabold text-amber-900">Garb<span class="text-amber-700">Adine</span></span>
       </a>
-      
-      <div id="subscriptionBadge" class="px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm shadow-sm flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Chargement...
+
+      <div class="flex items-center gap-3">
+        <div id="subscriptionBadge" class="px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm shadow-sm flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          Chargement...
+        </div>
+        <button onclick="openProfileModal()" class="px-4 py-2 rounded-xl bg-white shadow hover:bg-amber-50 text-amber-700 font-bold transition">Mon compte</button>
       </div>
     </div>
   </div>
 
   <!-- Contenu Principal -->
   <div class="max-w-6xl mx-auto space-y-6 fade-in">
-    
-    <!-- Stats du Jour -->
+
+    <!-- Filtre période -->
+    <div class="glass rounded-3xl p-4 shadow-lg flex flex-wrap items-center gap-3">
+      <span class="text-sm font-bold text-gray-700">Période :</span>
+      <button onclick="setPeriod('today')" class="period-btn px-4 py-2 rounded-xl text-sm font-bold bg-amber-500 text-white" data-period="today">Aujourd'hui</button>
+      <button onclick="setPeriod('week')" class="period-btn px-4 py-2 rounded-xl text-sm font-bold bg-white text-gray-700 shadow" data-period="week">7 derniers jours</button>
+      <button onclick="setPeriod('month')" class="period-btn px-4 py-2 rounded-xl text-sm font-bold bg-white text-gray-700 shadow" data-period="month">Ce mois</button>
+      <div class="flex items-center gap-2 ml-auto">
+        <input type="date" id="customFrom" class="px-3 py-2 rounded-xl border-2 border-amber-100 text-sm"/>
+        <span class="text-gray-500 text-sm">à</span>
+        <input type="date" id="customTo" class="px-3 py-2 rounded-xl border-2 border-amber-100 text-sm"/>
+        <button onclick="applyCustomRange()" class="px-3 py-2 rounded-xl bg-amber-600 text-white text-sm font-bold">Filtrer</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="glass rounded-3xl p-6 shadow-lg border-l-4 border-emerald-500">
-        <p class="text-sm text-gray-500 font-semibold mb-1">Ventes du jour</p>
+        <p class="text-sm text-gray-500 font-semibold mb-1">Ventes</p>
         <p id="salesToday" class="text-3xl font-extrabold text-gray-800">-- F</p>
       </div>
       <div class="glass rounded-3xl p-6 shadow-lg border-l-4 border-red-500">
-        <p class="text-sm text-gray-500 font-semibold mb-1">Dépenses du jour</p>
+        <p class="text-sm text-gray-500 font-semibold mb-1">Dépenses</p>
         <p id="expensesToday" class="text-3xl font-extrabold text-gray-800">-- F</p>
       </div>
       <div class="glass rounded-3xl p-6 shadow-lg border-l-4 border-amber-500">
@@ -83,11 +102,12 @@
               <th class="p-4 rounded-tl-xl">Nom</th>
               <th class="p-4">Téléphone</th>
               <th class="p-4">Dernière activité</th>
+              <th class="p-4">Statut</th>
               <th class="p-4 rounded-tr-xl">Action</th>
             </tr>
           </thead>
           <tbody id="gerantesTableBody" class="bg-white/30">
-            <tr><td colspan="4" class="p-4 text-center text-gray-500">Aucune gérante enregistrée.</td></tr>
+            <tr><td colspan="5" class="p-4 text-center text-gray-500">Chargement...</td></tr>
           </tbody>
         </table>
       </div>
@@ -109,7 +129,7 @@
         <input type="text" id="newGeranteName" placeholder="Nom complet" required class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80"/>
         <input type="tel" id="newGerantePhone" placeholder="Numéro WhatsApp (ex: 22670000000)" required class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80"/>
         <input type="password" id="newGerantePass" placeholder="Mot de passe temporaire" required minlength="6" class="w-full px-4 py-3 rounded-xl border-2 border-amber-100 focus:border-amber-500 focus:outline-none bg-white/80"/>
-        
+
         <button onclick="sendGeranteInvite()" id="btnSendInvite" class="w-full py-3 rounded-xl gradient-primary text-white font-bold shadow-lg hover:shadow-xl transition flex items-center justify-center">
           Envoyer l'invitation WhatsApp
         </button>
@@ -118,40 +138,208 @@
     </div>
   </div>
 
+  <!-- Modal Mon Compte -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm fade-in">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Mon compte</h3>
+      <div id="profileMsg" class="hidden mb-3 p-3 rounded-xl text-sm font-semibold text-center"></div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Numéro de téléphone</label>
+          <input type="tel" id="profPhone" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nouveau mot de passe (optionnel)</label>
+          <input type="password" id="profNewPass" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Mot de passe actuel (confirmation)</label>
+          <input type="password" id="profCurrentPass" required autocomplete="current-password" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <button onclick="saveProfile()" id="btnSaveProfile" class="w-full py-3 rounded-xl gradient-primary text-white font-bold shadow-lg hover:shadow-xl transition">Enregistrer</button>
+        <button onclick="closeProfileModal()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ===== VÉRIFICATION SESSION & ABONNEMENT =====
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    let currentPeriod = 'today';
+
     if (!user.id || user.role !== 'dg') {
       window.location.href = '/login.html';
     } else {
-      // Mise à jour badge abonnement
+      renderSubscriptionBadge();
+      refreshSubscriptionStatus();
+      loadDashboardData();
+      loadGerantes();
+    }
+
+    // Rafraîchit le statut d'abonnement depuis la base (sans exiger une reconnexion) :
+    // utile si l'admin vient de renouveler pendant que le DG était déjà connecté.
+    async function refreshSubscriptionStatus() {
+      try {
+        const shopId = user.shop?.id;
+        if (!shopId) return;
+        const res = await fetch(`/api/shops/status?shopId=${shopId}`);
+        const data = await res.json();
+        if (data.success) {
+          user.isSubscriptionActive = data.isSubscriptionActive;
+          user.daysLeft = data.daysLeft;
+          localStorage.setItem('user', JSON.stringify(user));
+          renderSubscriptionBadge();
+        }
+      } catch (e) {
+        console.error('Erreur rafraîchissement abonnement:', e);
+      }
+    }
+
+    function renderSubscriptionBadge() {
       const badge = document.getElementById('subscriptionBadge');
-      if (user.isSubscriptionActive === false || user.daysLeft <= 0) {
-        badge.className = 'px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold text-sm shadow-sm flex items-center gap-2 animate-pulse';
+      const days = user.daysLeft;
+      if (user.isSubscriptionActive === false || days <= 0) {
+        badge.className = 'px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold text-sm shadow-sm flex items-center gap-2 badge-blink';
         badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> ABONNEMENT EXPIRÉ';
-        
-        // Mode lecture seule si expiré
         document.getElementById('btnExport').disabled = true;
         document.getElementById('btnExport').classList.add('opacity-50', 'cursor-not-allowed');
         document.getElementById('btnExport').textContent = '⛔ Export bloqué (Abonnement expiré)';
+      } else if (days <= 3) {
+        badge.className = 'px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold text-sm shadow-sm flex items-center gap-2 badge-blink';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span> ${days} jour(s) restant(s) — Renouvelez !`;
       } else {
-        badge.textContent = `${user.daysLeft} jours d'essai restants`;
-        if (user.daysLeft <= 3) {
-          badge.className = 'px-4 py-2 rounded-full bg-orange-100 text-orange-800 font-bold text-sm shadow-sm flex items-center gap-2';
-        }
+        badge.className = 'px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm shadow-sm flex items-center gap-2';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${days} jours restants`;
       }
+    }
 
-      // Charger les données (Placeholder pour stats et gérantes)
+    function setPeriod(period) {
+      currentPeriod = period;
+      document.querySelectorAll('.period-btn').forEach(b => {
+        b.classList.remove('bg-amber-500', 'text-white');
+        b.classList.add('bg-white', 'text-gray-700', 'shadow');
+      });
+      document.querySelector(`.period-btn[data-period="${period}"]`).classList.add('bg-amber-500', 'text-white');
       loadDashboardData();
     }
 
-    async function loadDashboardData() {
-      // TODO: Appeler /api/transactions/list?shopId=X&date=today pour les stats
-      // Pour l'instant, affichage statique sécurisé basé sur la session
-      document.getElementById('salesToday').textContent = '0 F';
-      document.getElementById('expensesToday').textContent = '0 F';
-      document.getElementById('profitToday').textContent = '0 F';
-      document.getElementById('geranteCount').textContent = '0 gérante(s)';
+    function applyCustomRange() {
+      const from = document.getElementById('customFrom').value;
+      const to = document.getElementById('customTo').value;
+      if (!from || !to) { alert('Choisissez une date de début et de fin.'); return; }
+      currentPeriod = 'custom';
+      document.querySelectorAll('.period-btn').forEach(b => {
+        b.classList.remove('bg-amber-500', 'text-white');
+        b.classList.add('bg-white', 'text-gray-700', 'shadow');
+      });
+      loadDashboardData(from, to);
+    }
+
+    async function loadDashboardData(from, to) {
+      try {
+        const shopId = user.shop?.id;
+        if (!shopId) return;
+        let url = `/api/transactions/list?shopId=${shopId}&period=${currentPeriod}`;
+        if (currentPeriod === 'custom') url += `&from=${from}&to=${to}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('salesToday').textContent = data.stats.sales.toLocaleString('fr-FR') + ' F';
+          document.getElementById('expensesToday').textContent = data.stats.expenses.toLocaleString('fr-FR') + ' F';
+          document.getElementById('profitToday').textContent = data.stats.profit.toLocaleString('fr-FR') + ' F';
+        }
+      } catch (e) {
+        console.error('Erreur stats dashboard:', e);
+      }
+    }
+
+    async function loadGerantes() {
+      try {
+        const shopId = user.shop?.id;
+        if (!shopId) return;
+        const res = await fetch(`/api/dg/gerantes?shopId=${shopId}`);
+        const data = await res.json();
+        const tbody = document.getElementById('gerantesTableBody');
+
+        if (!data.success || data.gerantes.length === 0) {
+          document.getElementById('geranteCount').textContent = '0 gérante(s)';
+          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Aucune gérante enregistrée.</td></tr>`;
+          return;
+        }
+
+        document.getElementById('geranteCount').textContent = `${data.gerantes.length} gérante(s)`;
+        tbody.innerHTML = '';
+        data.gerantes.forEach(g => {
+          const lastActivity = g.last_activity ? new Date(g.last_activity).toLocaleDateString('fr-FR') : 'Aucune saisie';
+          tbody.innerHTML += `
+            <tr class="border-b border-amber-100/50">
+              <td class="p-4 font-bold text-gray-800">${g.name}</td>
+              <td class="p-4 text-gray-600">${g.phone}</td>
+              <td class="p-4 text-gray-600">${lastActivity}</td>
+              <td class="p-4">
+                <span class="px-2 py-1 rounded-full text-xs font-bold ${g.active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'}">
+                  ${g.active ? 'Actif' : 'Désactivé'}
+                </span>
+              </td>
+              <td class="p-4 flex flex-wrap gap-2">
+                <button onclick="toggleGerante(${g.id}, ${!g.active})" class="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 font-bold">
+                  ${g.active ? 'Désactiver' : 'Réactiver'}
+                </button>
+                <button onclick="resetGerantePassword(${g.id}, '${g.name.replace(/'/g, "\\'")}')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-bold">
+                  🔑 Mot de passe oublié
+                </button>
+                <button onclick="deleteGerante(${g.id})" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 font-bold">
+                  Supprimer
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.error('Erreur chargement gérantes:', e);
+      }
+    }
+
+    async function toggleGerante(id, active) {
+      try {
+        const res = await fetch('/api/dg/gerantes', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ geranteId: id, active })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) loadGerantes();
+        else alert(data.error || 'Erreur.');
+      } catch (e) { alert('Erreur de connexion serveur.'); }
+    }
+
+    async function resetGerantePassword(id, name) {
+      const newPassword = prompt(`Nouveau mot de passe temporaire pour ${name} (au moins 6 caractères) :`);
+      if (!newPassword) return;
+      if (newPassword.length < 6) { alert('Le mot de passe doit faire au moins 6 caractères.'); return; }
+      try {
+        const res = await fetch('/api/dg/gerantes', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ geranteId: id, newPassword })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`✅ Nouveau mot de passe de ${name} : ${newPassword}\n\nCommunique-le lui directement.`);
+        } else {
+          alert(data.error || 'Erreur.');
+        }
+      } catch (e) { alert('Erreur de connexion serveur.'); }
+    }
+
+    async function deleteGerante(id) {
+      if (!confirm('Supprimer définitivement ce compte gérante ?')) return;
+      try {
+        const res = await fetch(`/api/dg/gerantes?geranteId=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok && data.success) loadGerantes();
+        else alert(data.error || 'Erreur.');
+      } catch (e) { alert('Erreur de connexion serveur.'); }
     }
 
     // ===== GESTION MODAL GÉRANTE =====
@@ -170,7 +358,6 @@
       document.getElementById('newGerantePass').value = '';
     }
 
-    // ✅ FONCTION CORRIGÉE : Crée le compte EN BASE AVANT d'ouvrir WhatsApp
     async function sendGeranteInvite() {
       const name = document.getElementById('newGeranteName').value.trim();
       const phone = document.getElementById('newGerantePhone').value.trim();
@@ -186,7 +373,6 @@
       btn.disabled = true;
 
       try {
-        // 1. CRÉER LE COMPTE GÉRANTE EN BASE DE DONNÉES VIA L'API REGISTER
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -195,11 +381,7 @@
             phone: phone,
             password: pass,
             role: 'gerante',
-            shopName: user.shop?.name || 'GarbAdine',
-            shopType: user.shop?.type || 'garbadrome',
-            location: user.shop?.location || '',
-            secretQuestion: 'animal',
-            secretAnswer: 'chat'
+            shopId: user.shop?.id
           })
         });
 
@@ -209,14 +391,12 @@
           throw new Error(data.error || 'Erreur lors de la création du compte');
         }
 
-        console.log('✅ Gérante créée en DB:', data.user.id);
-
-        // 2. SEULEMENT SI SUCCÈS → OUVRIR WHATSAPP AVEC LES IDENTIFIANTS
         const waMessage = `Bonjour ${name}! 👋\n\nVous avez été ajoutée comme Gérante chez ${user.shop?.name || 'GarbAdine'} ✅\n\n📱 Téléphone: ${phone}\n🔑 MDP Temporaire: ${pass}\n\nConnectez-vous ici: https://garb-adine.vercel.app/login.html\n\nSélectionnez le rôle "Gérante" lors de la connexion.\nMerci de rejoindre l'équipe! 🇧🇫`;
         const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
 
         window.open(waLink, '_blank');
         closeGeranteModal();
+        loadGerantes();
         alert("✅ Compte gérante créé ET invitation WhatsApp envoyée !");
 
       } catch (error) {
@@ -229,13 +409,81 @@
     }
 
     // ===== EXPORT EXCEL =====
-    async function exportExcel() {
+    let lastCustomFrom = null, lastCustomTo = null;
+
+    function exportExcel() {
       if (user.isSubscriptionActive === false) {
         alert("⚠️ Export impossible : Abonnement expiré.");
         return;
       }
-      // TODO: Appeler GET /api/transactions/export?shopId=X&format=excel
-      alert("📥 Génération du rapport Excel en cours... (Fonctionnalité API à connecter)");
+      const shopId = user.shop?.id;
+      if (!shopId) return;
+      let url = `/api/transactions/export?shopId=${shopId}&period=${currentPeriod}`;
+      if (currentPeriod === 'custom') {
+        const from = document.getElementById('customFrom').value;
+        const to = document.getElementById('customTo').value;
+        if (!from || !to) { alert('Choisissez une plage de dates avant d\'exporter.'); return; }
+        url += `&from=${from}&to=${to}`;
+      }
+      window.location.href = url;
+    }
+
+    // ===== MODAL MON COMPTE =====
+    function openProfileModal() {
+      document.getElementById('profPhone').value = user.phone || '';
+      document.getElementById('profNewPass').value = '';
+      document.getElementById('profCurrentPass').value = '';
+      document.getElementById('profileModal').classList.remove('hidden');
+    }
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.add('hidden');
+    }
+
+    async function saveProfile() {
+      const newPhone = document.getElementById('profPhone').value.trim();
+      const newPassword = document.getElementById('profNewPass').value;
+      const currentPassword = document.getElementById('profCurrentPass').value;
+      const msg = document.getElementById('profileMsg');
+
+      if (!currentPassword) {
+        msg.textContent = 'Entrez votre mot de passe actuel pour confirmer.';
+        msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveProfile');
+      btn.disabled = true;
+      btn.textContent = 'Enregistrement...';
+
+      try {
+        const res = await fetch('/api/users/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, currentPassword, newPhone, newPassword: newPassword || undefined })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          user.phone = data.user.phone;
+          localStorage.setItem('user', JSON.stringify(user));
+          msg.textContent = '✅ Compte mis à jour !';
+          msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-emerald-50 text-emerald-700';
+          msg.classList.remove('hidden');
+          setTimeout(closeProfileModal, 1200);
+        } else {
+          msg.textContent = data.error || 'Erreur lors de la mise à jour.';
+          msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+          msg.classList.remove('hidden');
+        }
+      } catch (e) {
+        msg.textContent = 'Erreur de connexion serveur.';
+        msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+        msg.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enregistrer';
+      }
     }
 
     // ===== DÉCONNEXION =====

@@ -14,6 +14,8 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 8px;}
     @keyframes spin { to { transform: rotate(360deg); } }
+    .badge-blink { animation: blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   </style>
 </head>
 <body class="gradient-bg min-h-screen p-4 md:p-8">
@@ -22,14 +24,17 @@
     <!-- Header avec Logo -->
     <div class="flex items-center justify-between mb-8 fade-in">
       <a href="/" class="inline-flex items-center gap-2">
-        <img src="/assets/logo.png" alt="GarbAdine" class="h-10 w-auto object-contain drop-shadow-md" 
+        <img src="/assets/logo.png" alt="GarbAdine" class="h-10 w-auto object-contain drop-shadow-md"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
         <div style="display:none;" class="w-10 h-10 rounded-xl bg-amber-600 items-center justify-center shadow-md">
           <span class="text-white font-extrabold text-lg">G</span>
         </div>
         <h1 class="text-3xl font-extrabold text-gray-800">Administration GarbAdine 👑</h1>
       </a>
-      <button onclick="logout()" class="px-4 py-2 rounded-xl bg-white shadow hover:bg-red-50 text-red-600 font-bold transition">Déconnexion</button>
+      <div class="flex items-center gap-2">
+        <button onclick="openProfileModal()" class="px-4 py-2 rounded-xl bg-white shadow hover:bg-amber-50 text-amber-700 font-bold transition">Mon compte</button>
+        <button onclick="logout()" class="px-4 py-2 rounded-xl bg-white shadow hover:bg-red-50 text-red-600 font-bold transition">Déconnexion</button>
+      </div>
     </div>
 
     <!-- Stats Globales -->
@@ -47,7 +52,7 @@
         <p class="text-3xl font-extrabold text-red-600" id="statExpired">--</p>
       </div>
       <div class="bg-white rounded-2xl p-6 shadow-sm border-l-4 border-amber-500">
-        <p class="text-sm text-gray-500">Revenus Abonnements</p>
+        <p class="text-sm text-gray-500">Chiffre d'affaires réel (encaissé)</p>
         <p class="text-3xl font-extrabold text-amber-600" id="statRevenue">-- F</p>
       </div>
     </div>
@@ -75,6 +80,64 @@
     </div>
   </div>
 
+  <!-- Modal Renouvellement -->
+  <div id="renewModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm fade-in">
+      <h3 class="text-xl font-bold text-gray-800 mb-1">Renouveler l'abonnement</h3>
+      <p class="text-sm text-gray-500 mb-4" id="renewShopName"></p>
+
+      <p class="text-xs font-bold text-gray-600 mb-2">1. Durée</p>
+      <div class="grid grid-cols-3 gap-2 mb-4">
+        <button onclick="selectPlan(1)" class="plan-btn py-3 rounded-xl border-2 border-amber-200 font-bold text-sm" data-plan="1">1 mois<br><span class="text-xs font-normal">Réf. 5 000 F</span></button>
+        <button onclick="selectPlan(3)" class="plan-btn py-3 rounded-xl border-2 border-amber-200 font-bold text-sm" data-plan="3">3 mois<br><span class="text-xs font-normal">Réf. 12 000 F</span></button>
+        <button onclick="selectPlan(12)" class="plan-btn py-3 rounded-xl border-2 border-amber-200 font-bold text-sm" data-plan="12">12 mois<br><span class="text-xs font-normal">Réf. 40 000 F</span></button>
+      </div>
+
+      <p class="text-xs font-bold text-gray-600 mb-2">2. As-tu encaissé de l'argent ?</p>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <button onclick="selectPaid(false)" id="btnFree" class="py-3 rounded-xl border-2 border-gray-200 font-bold text-sm">🎁 Gratuit (offert)</button>
+        <button onclick="selectPaid(true)" id="btnPaid" class="py-3 rounded-xl border-2 border-gray-200 font-bold text-sm">💵 Payant</button>
+      </div>
+      <div id="amountField" class="hidden mb-4">
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Montant réellement encaissé (FCFA)</label>
+        <input type="number" id="amountPaidInput" min="0" placeholder="Ex: 5000" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+      </div>
+
+      <button onclick="confirmRenew()" id="btnConfirmRenew" class="w-full py-3 rounded-xl bg-amber-600 text-white font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50" disabled>
+        Confirmer le renouvellement
+      </button>
+      <button onclick="closeRenewModal()" class="w-full mt-2 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">Annuler</button>
+    </div>
+  </div>
+
+  <!-- Modal Mon Compte Admin -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm fade-in">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Mon compte administrateur</h3>
+      <div id="profileMsg" class="hidden mb-3 p-3 rounded-xl text-sm font-semibold text-center"></div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+          <input type="email" id="profEmail" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Téléphone</label>
+          <input type="tel" id="profPhone" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nouveau mot de passe (optionnel)</label>
+          <input type="password" id="profNewPass" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Mot de passe actuel (confirmation)</label>
+          <input type="password" id="profCurrentPass" required autocomplete="current-password" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-amber-500 focus:outline-none"/>
+        </div>
+        <button onclick="saveAdminProfile()" id="btnSaveProfile" class="w-full py-3 rounded-xl bg-amber-600 text-white font-bold shadow-lg hover:shadow-xl transition">Enregistrer</button>
+        <button onclick="closeProfileModal()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ===== VÉRIFICATION SESSION ADMIN =====
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -86,58 +149,45 @@
 
     async function loadAdminData() {
       try {
-        // TODO: Remplacer par appel API réel quand créé: GET /api/admin/stats
-        // Pour l'instant, affichage sécurisé sans crash
-        document.getElementById('statTotal').textContent = '0';
-        document.getElementById('statActive').textContent = '0';
-        document.getElementById('statExpired').textContent = '0';
-        document.getElementById('statRevenue').textContent = '0 F';
-        
-        const tbody = document.getElementById('shopTableBody');
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="6" class="p-8 text-center">
-              <p class="text-gray-500 mb-2">Aucune donnée disponible pour le moment.</p>
-              <p class="text-xs text-gray-400">L'API Admin sera connectée prochainement.</p>
-            </td>
-          </tr>
-        `;
-        
-        /* 
-        // CODE FUTUR QUAND API SERA CRÉÉE :
         const res = await fetch('/api/admin/stats');
         const data = await res.json();
-        
-        document.getElementById('statTotal').textContent = data.totalShops;
-        document.getElementById('statActive').textContent = data.activeShops;
-        document.getElementById('statExpired').textContent = data.expiredShops;
-        document.getElementById('statRevenue').textContent = data.revenue.toLocaleString('fr-FR') + ' F';
-        
+
+        if (!data.success) throw new Error(data.error || 'Erreur');
+
+        document.getElementById('statTotal').textContent = data.stats.total_shops;
+        document.getElementById('statActive').textContent = data.stats.active_shops;
+        document.getElementById('statExpired').textContent = data.stats.expired_shops;
+        document.getElementById('statRevenue').textContent = data.stats.real_revenue.toLocaleString('fr-FR') + ' F';
+
+        const tbody = document.getElementById('shopTableBody');
+        if (data.shops.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">Aucune boutique enregistrée.</td></tr>`;
+          return;
+        }
+
         tbody.innerHTML = '';
         data.shops.forEach(shop => {
-          const isExpired = new Date(shop.subscription_end) < new Date();
+          const daysLeft = shop.subscription_end ? Math.ceil((new Date(shop.subscription_end) - new Date()) / (1000*60*60*24)) : 0;
           tbody.innerHTML += `
             <tr class="hover:bg-amber-50/50 transition">
               <td class="p-4 font-bold text-gray-800">${shop.name}</td>
-              <td class="p-4"><span class="px-2 py-1 rounded bg-gray-100 text-xs font-bold">${shop.type}</span></td>
-              <td class="p-4 text-gray-600">${shop.dg_name}</td>
-              <td class="p-4 text-gray-600">${new Date(shop.subscription_end).toLocaleDateString('fr-FR')}</td>
+              <td class="p-4"><span class="px-2 py-1 rounded bg-gray-100 text-xs font-bold">${shop.type || '—'}</span></td>
+              <td class="p-4 text-gray-600">${shop.dg_name}<br><span class="text-xs text-gray-400">${shop.dg_phone}</span></td>
+              <td class="p-4 text-gray-600">${shop.subscription_end_formatted}${!shop.is_expired ? ` (${daysLeft}j)` : ''}</td>
               <td class="p-4">
-                <span class="px-2 py-1 rounded-full text-xs font-bold ${isExpired ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}">
-                  ${isExpired ? 'EXPIRÉ' : 'ACTIF'}
+                <span class="px-2 py-1 rounded-full text-xs font-bold ${shop.is_expired ? 'bg-red-100 text-red-700' : (daysLeft <= 3 ? 'bg-red-100 text-red-700 badge-blink' : 'bg-emerald-100 text-emerald-700')}">
+                  ${shop.is_expired ? 'EXPIRÉ' : (daysLeft <= 3 ? daysLeft + 'j restants' : 'ACTIF')}
                 </span>
               </td>
               <td class="p-4">
-                <button onclick="renewSub('${shop.id}')" class="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 font-bold flex items-center gap-1">
-                  <span class="spinner hidden" id="spin-${shop.id}"></span>
-                  Renouveler (+30j)
+                <button onclick="openRenewModal('${shop.id}', '${shop.name.replace(/'/g, "\\'")}')" class="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 font-bold">
+                  Renouveler
                 </button>
               </td>
             </tr>
           `;
         });
-        */
-        
+
       } catch (error) {
         console.error('Erreur chargement admin:', error);
         document.getElementById('shopTableBody').innerHTML = `
@@ -146,37 +196,144 @@
       }
     }
 
-    async function renewSub(shopId) {
-      // TODO: Remplacer par appel API réel: POST /api/admin/renew
-      alert("Fonctionnalité de renouvellement bientôt disponible via API.");
-      
-      /*
-      // CODE FUTUR :
-      const btn = event.target.closest('button');
-      const spinner = document.getElementById(`spin-${shopId}`);
+    // ===== RENOUVELLEMENT =====
+    let renewShopId = null;
+    let selectedMonths = null;
+    let selectedIsFree = null;
+    const REF_PRICES = { 1: 5000, 3: 12000, 12: 40000 };
+
+    function openRenewModal(shopId, shopName) {
+      renewShopId = shopId;
+      selectedMonths = null;
+      selectedIsFree = null;
+      document.getElementById('renewShopName').textContent = shopName;
+      document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('bg-amber-500', 'text-white', 'border-amber-500'));
+      document.getElementById('btnFree').classList.remove('bg-gray-700', 'text-white');
+      document.getElementById('btnPaid').classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
+      document.getElementById('amountField').classList.add('hidden');
+      document.getElementById('amountPaidInput').value = '';
+      document.getElementById('btnConfirmRenew').disabled = true;
+      document.getElementById('renewModal').classList.remove('hidden');
+    }
+    function closeRenewModal() {
+      document.getElementById('renewModal').classList.add('hidden');
+    }
+    function selectPlan(months) {
+      selectedMonths = months;
+      document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('bg-amber-500', 'text-white', 'border-amber-500'));
+      document.querySelector(`.plan-btn[data-plan="${months}"]`).classList.add('bg-amber-500', 'text-white', 'border-amber-500');
+      if (selectedIsFree === true && !document.getElementById('amountPaidInput').value) {
+        document.getElementById('amountPaidInput').value = REF_PRICES[months];
+      }
+      updateConfirmState();
+    }
+    function selectPaid(isPaid) {
+      selectedIsFree = !isPaid;
+      document.getElementById('btnFree').classList.toggle('bg-gray-700', !isPaid);
+      document.getElementById('btnFree').classList.toggle('text-white', !isPaid);
+      document.getElementById('btnPaid').classList.toggle('bg-emerald-500', isPaid);
+      document.getElementById('btnPaid').classList.toggle('text-white', isPaid);
+      document.getElementById('btnPaid').classList.toggle('border-emerald-500', isPaid);
+      document.getElementById('amountField').classList.toggle('hidden', !isPaid);
+      if (isPaid && selectedMonths && !document.getElementById('amountPaidInput').value) {
+        document.getElementById('amountPaidInput').value = REF_PRICES[selectedMonths];
+      }
+      updateConfirmState();
+    }
+    function updateConfirmState() {
+      const ok = selectedMonths && selectedIsFree !== null && (selectedIsFree === true || document.getElementById('amountPaidInput').value !== '');
+      document.getElementById('btnConfirmRenew').disabled = !ok;
+    }
+    document.getElementById('amountPaidInput')?.addEventListener('input', updateConfirmState);
+
+    async function confirmRenew() {
+      if (!renewShopId || !selectedMonths || selectedIsFree === null) return;
+      const amountPaid = selectedIsFree ? 0 : Number(document.getElementById('amountPaidInput').value || 0);
+
+      const btn = document.getElementById('btnConfirmRenew');
       btn.disabled = true;
-      spinner.classList.remove('hidden');
-      
+      btn.innerHTML = '<span class="spinner"></span> Renouvellement...';
+
       try {
         const res = await fetch('/api/admin/renew', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ shopId, days: 30 })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shopId: renewShopId, months: selectedMonths, isFree: selectedIsFree, amountPaid })
         });
         const data = await res.json();
-        if (res.ok) {
-          alert("Abonnement renouvelé avec succès !");
+        if (res.ok && data.success) {
+          closeRenewModal();
           loadAdminData();
         } else {
-          alert(data.error || "Erreur lors du renouvellement.");
+          alert(data.error || 'Erreur lors du renouvellement.');
         }
       } catch (e) {
-        alert("Erreur de connexion serveur.");
+        alert('Erreur de connexion serveur.');
       } finally {
         btn.disabled = false;
-        spinner.classList.add('hidden');
+        btn.textContent = 'Confirmer le renouvellement';
       }
-      */
+    }
+
+    // ===== MODAL MON COMPTE ADMIN =====
+    function openProfileModal() {
+      document.getElementById('profEmail').value = user.email || '';
+      document.getElementById('profPhone').value = user.phone || '';
+      document.getElementById('profNewPass').value = '';
+      document.getElementById('profCurrentPass').value = '';
+      document.getElementById('profileModal').classList.remove('hidden');
+    }
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.add('hidden');
+    }
+
+    async function saveAdminProfile() {
+      const newEmail = document.getElementById('profEmail').value.trim();
+      const newPhone = document.getElementById('profPhone').value.trim();
+      const newPassword = document.getElementById('profNewPass').value;
+      const currentPassword = document.getElementById('profCurrentPass').value;
+      const msg = document.getElementById('profileMsg');
+
+      if (!currentPassword) {
+        msg.textContent = 'Entrez votre mot de passe actuel pour confirmer.';
+        msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveProfile');
+      btn.disabled = true;
+      btn.textContent = 'Enregistrement...';
+
+      try {
+        const res = await fetch('/api/admin/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminId: user.id, currentPassword, newEmail, newPhone, newPassword: newPassword || undefined })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          user.email = data.user.email;
+          user.phone = data.user.phone;
+          localStorage.setItem('user', JSON.stringify(user));
+          msg.textContent = '✅ Compte mis à jour !';
+          msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-emerald-50 text-emerald-700';
+          msg.classList.remove('hidden');
+          setTimeout(closeProfileModal, 1200);
+        } else {
+          msg.textContent = data.error || 'Erreur lors de la mise à jour.';
+          msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+          msg.classList.remove('hidden');
+        }
+      } catch (e) {
+        msg.textContent = 'Erreur de connexion serveur.';
+        msg.className = 'mb-3 p-3 rounded-xl text-sm font-semibold text-center bg-red-50 text-red-700';
+        msg.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enregistrer';
+      }
     }
 
     function logout() {
