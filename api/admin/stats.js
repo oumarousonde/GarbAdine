@@ -1,21 +1,18 @@
-// api/admin/stats.js - VERSION SELF-CONTAINED ULTIME
+// api/admin/stats.js
 const { Pool } = require('pg');
 
-// Connexion DB directe (Self-contained)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Requis pour Neon
+  ssl: { rejectUnauthorized: false },
 });
 
 module.exports = async function handler(req, res) {
-  console.log('=== ADMIN STATS START ===');
-  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // 1. Récupérer toutes les boutiques avec infos DG et statut abonnement
+    // 1. Boutiques avec infos DG et statut abonnement
     const shopsRes = await pool.query(`
       SELECT 
         s.id,
@@ -30,49 +27,39 @@ module.exports = async function handler(req, res) {
     `);
 
     const shops = shopsRes.rows;
-    console.log('BOUTIQUES TROUVÉES:', shops.length);
-
-    // 2. Calculer les stats
-    let activeCount = 0;
-    let expiredCount = 0;
-    let totalRevenue = 0;
     const now = new Date();
 
+    let activeCount = 0;
+    let expiredCount = 0;
+
     const processedShops = shops.map(shop => {
-      const subEnd = new Date(shop.subscription_end);
-      const isExpired = now > subEnd;
-      
-      if (isExpired) {
-        expiredCount++;
-      } else {
-        activeCount++;
-        // Estimation revenu : 5000 F/mois * mois restants (arrondi)
-        const monthsLeft = Math.max(0, Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24 * 30)));
-        totalRevenue += 5000 * monthsLeft;
-      }
+      const subEnd = shop.subscription_end ? new Date(shop.subscription_end) : null;
+      const isExpired = !subEnd || now > subEnd;
+
+      if (isExpired) expiredCount++; else activeCount++;
 
       return {
         ...shop,
         is_expired: isExpired,
-        subscription_end_formatted: subEnd.toLocaleDateString('fr-FR')
+        subscription_end_formatted: subEnd ? subEnd.toLocaleDateString('fr-FR') : 'Jamais activé'
       };
     });
 
-    console.log('STATS CALCULÉES:', { 
-      total: shops.length, 
-      active: activeCount, 
-      expired: expiredCount, 
-      revenue: totalRevenue 
-    });
+    // 2. Chiffre d'affaires RÉEL : somme de ce qui a réellement été encaissé
+    // (renseigné par l'admin à chaque renouvellement — gratuit ou montant précis payé),
+    // jamais une estimation basée sur le tarif catalogue.
+    const revenueRes = await pool.query(
+      `SELECT COALESCE(SUM(amount_paid), 0) as total FROM subscription_payments WHERE is_free = false`
+    );
+    const realRevenue = Number(revenueRes.rows[0].total) || 0;
 
-    // 3. Retourner les données structurées
     return res.status(200).json({
       success: true,
       stats: {
         total_shops: shops.length,
         active_shops: activeCount,
         expired_shops: expiredCount,
-        estimated_revenue: totalRevenue
+        real_revenue: realRevenue
       },
       shops: processedShops
     });
